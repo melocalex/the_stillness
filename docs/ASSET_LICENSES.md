@@ -129,3 +129,9 @@ Sound" (creator Zyleak). Nothing in this repository or in
 `StillnessAssets.rbxm` references it; the message is tagged `Studio`, not
 `Server` or `Client`, and appears when the editor UI loads. It is not a game
 asset failure.
+
+## Original audio uploaded to the owner's account
+
+| Key | Asset id | Title | Source |
+| --- | --- | --- | --- |
+| `STORM_NIGHT` | 85164647841567 | The Mechanism (storm-night music box) | Original composition, `tools/audio/compose_storm_musicbox.py`; uploaded with Studio Asset Manager on 2026-11-20; loads in Studio |

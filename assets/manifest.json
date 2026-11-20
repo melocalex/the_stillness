@@ -1963,18 +1963,18 @@
       "author": "THE STILLNESS (original composition, tools/audio/compose_storm_musicbox.py)",
       "license": "Original work owned by the project",
       "local_path": "assets/audio/music/the_mechanism_storm_musicbox.mp3",
-      "roblox_asset_id": null,
+      "roblox_asset_id": 85164647841567,
       "attribution_required": false,
       "states": {
         "discovered": true,
         "license_verified": true,
         "downloaded": true,
         "processed": true,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "needs upload to the owner's Roblox account (Studio Asset Manager) to get an asset id"
+      "notes": "uploaded via Studio Asset Manager 2026-11-20; loads in Studio (60 s); STORM_NIGHT music state"
     }
   ]
 }

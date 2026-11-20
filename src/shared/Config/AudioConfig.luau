@@ -31,7 +31,8 @@ AudioConfig.Music = {
 	DAWN = { id(9042042586) }, -- Eternal Ice (b) (APM)
 	DISCOVERY = { id(113592187486066) }, -- Moon TAG (APM)
 	BLACKOUT = {},
-	STORM_NIGHT = { id(1837805876) }, -- Music Box Of Death (APM); swap in "The Mechanism" once uploaded
+	-- "The Mechanism" (original, uploaded by the owner 2026-11-20) and APM "Music Box Of Death".
+	STORM_NIGHT = { id(85164647841567), id(1837805876) },
 } :: { [string]: { string } }
 
 -- Looping ambience layers. The mixer sets each layer's volume every frame.
