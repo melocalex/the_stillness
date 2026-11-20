@@ -20,6 +20,7 @@ Net.ClientEvents = {
 	"EatStew",
 	"StorageMove", -- (item: string, amount: number, toChest: boolean)
 	"Chaoscope", -- (action: "power" | "mode" | "sensitivity", value: any)
+	"LifeRequest", -- (kind: "track" | "buy", id: string)
 }
 Net.ClientUnreliable = {
 	"LookVector", -- (Vector3) camera direction for "is the creature being watched"
@@ -37,9 +38,12 @@ Net.ServerEvents = {
 	"EndCard", -- (text: string)
 	"Radio", -- (text: string)
 	"Dissonance", -- (kind: string, position: Vector3?, seed: number?) nonvisual effects
+	"Life", -- (view) Life Journal tabs and tracker
+	"Shop", -- (vendor: string, name: string, offers, credits: number)
 }
 Net.Functions = {
 	"GetJournal",
+	"GetLife",
 }
 
 local folder: Folder? = nil

@@ -59,9 +59,13 @@ export type PState = {
 	sleeping: number,
 	threat: number,
 	heavyBreathAt: number,
+	loadStatus: string, -- "pending" | "ok" | "failed"
+	saved: { [string]: any },
 }
 
 local states: { [Player]: PState } = {}
+-- Extra sections other services keep in the same save (e.g. "progression").
+local sections: { [string]: (Player) -> any } = {}
 local spawnListeners: { (Player, Model) -> () } = {}
 local chest = Inventory.new({}, 200)
 local store: DataStore? = nil
@@ -635,28 +639,65 @@ end
 
 -- Persistence (silently disabled without DataStore access, e.g. local Studio).
 
+-- Another service stores its own section in this player's save. `saveFn`
+-- returns the section, or nil to keep what was loaded.
+function PlayerService.persist(key: string, saveFn: (Player) -> any)
+	sections[key] = saveFn
+end
+
+-- "pending" until the save has been read, then "ok" (data or a new player;
+-- also when there is no DataStore) or "failed" (never saved over).
+function PlayerService.loadStatus(player: Player): string
+	local s = states[player]
+	return if s then s.loadStatus else "pending"
+end
+
+function PlayerService.savedSection(player: Player, key: string): any
+	local s = states[player]
+	return if s then s.saved[key] else nil
+end
+
 local function load(player: Player, s: PState)
 	if not store then
+		s.loadStatus = "ok"
 		return
 	end
 	local ok, data = pcall(function()
 		return (store :: DataStore):GetAsync("p_" .. player.UserId)
 	end)
-	if ok and type(data) == "table" then
+	if not ok then
+		s.loadStatus = "failed"
+		warn(
+			"[Player] could not load save for " .. player.Name .. "; progress this session will not be saved"
+		)
+		return
+	end
+	if type(data) == "table" then
+		s.saved = data
 		Inventory.restore(s.inventory, data.items, knownItems)
 		if data.coatFound == true then
 			PlayerService.setCoatFound(player)
 		end
 		PlayerService.pushInventory(player)
 	end
+	s.loadStatus = "ok"
 end
 
 local function save(player: Player)
 	local s = states[player]
-	if not store or not s then
+	-- Never write over a save that could not be read.
+	if not store or not s or s.loadStatus ~= "ok" then
 		return
 	end
-	local data = { items = Inventory.snapshot(s.inventory), coatFound = s.coatFound }
+	local data: { [string]: any } = { items = Inventory.snapshot(s.inventory), coatFound = s.coatFound }
+	for key, fn in sections do
+		local ok, v = pcall(fn, player)
+		if ok and v ~= nil then
+			data[key] = v
+		elseif s.saved[key] ~= nil then
+			data[key] = s.saved[key]
+		end
+	end
 	pcall(function()
 		(store :: DataStore):SetAsync("p_" .. player.UserId, data)
 	end)
@@ -695,6 +736,8 @@ local function addPlayer(player: Player)
 		sleeping = 0,
 		threat = 0,
 		heavyBreathAt = 0,
+		loadStatus = "pending",
+		saved = {},
 	}
 	states[player] = s
 	-- Shift is the run key; Roblox's shift-lock would steal it.
