@@ -784,6 +784,46 @@ local function idx(name: string): number
 	return ChaosField.levelIndex(LEVELS, name)
 end
 
+describe("Terrain materials", function()
+	-- Roblox rejects non-terrain materials ("Invalid terrain material") and
+	-- the whole world build aborts. Pebble did exactly that on 2026-11-20.
+	local TERRAIN = {
+		Air = true,
+		Water = true,
+		Asphalt = true,
+		Basalt = true,
+		Brick = true,
+		Cobblestone = true,
+		Concrete = true,
+		CrackedLava = true,
+		Glacier = true,
+		Grass = true,
+		Ground = true,
+		Ice = true,
+		LeafyGrass = true,
+		Limestone = true,
+		Mud = true,
+		Pavement = true,
+		Rock = true,
+		Salt = true,
+		Sand = true,
+		Sandstone = true,
+		Slate = true,
+		Snow = true,
+		WoodPlanks = true,
+	}
+	it("the terrain builder only uses terrain materials", function()
+		local fs = require("@lune/fs")
+		local source = fs.readFile("src/server/World/Terrain.luau")
+		local count = 0
+		for name in string.gmatch(source, "Enum%.Material%.(%w+)") do
+			count += 1
+			truthy(TERRAIN[name], "not a terrain material: " .. name)
+		end
+		truthy(count > 0)
+	end)
+end)
+
 describe("ChaosField and the world", function()
 	it("covers the whole terrain and keeps the cabin at a sector's centre", function()
 		local c = DissonanceConfig.Field
