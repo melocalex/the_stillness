@@ -61,7 +61,7 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
 
 ## Automated tests
 
-- 109 Lune unit tests over the pure logic: TimeCycle, Perception,
+- 110 Lune unit tests over the pure logic: TimeCycle, Perception,
   CreatureBrain, Shelter, Noise, CollectiveMind, Inventory, NightClass
   (including the 65/25/9/1 night weights and the scripted first nights),
   Comfort, LightVisibility, MusicState (including storm night), Journal,
@@ -185,7 +185,7 @@ the gate; **not run in Studio**:
   client from scope attributes, R to switch on/off, F to look closely
   (POWER, mode, sensitivity). On by default in PASSIVE. The needle is
   damped per mode so it drifts rather than jumps.
-- ChaoticEnergyService: 11x11 sector field ticking at 1 Hz on real time;
+- ChaoticEnergyService: 17x17 sector field (covers the ±1600 valley) ticking at 1 Hz on real time;
   rain, night, collective level and creature `FearEnergy` / `Hunger`
   attributes as inputs (missing reads 0); one anomaly at a time, none on
   day 1; Studio seeding through `DissonanceForce`.
