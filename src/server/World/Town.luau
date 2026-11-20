@@ -565,15 +565,18 @@ end
 
 local function weatherStation(parent: Instance, s: any): Model
 	local m = Builder.model("WeatherStation", parent)
-	local w, d, h = 12, 10, 8
+	-- 10 studs to the eaves, 9 under the porch: an R15 rig is about 5.5
+	-- tall, so Dr. Hale stands well clear and the sign never covers him.
+	local w, d, h = 14, 10, 10
 	local o = frame(m, s.x, s.z, s.yaw, w + 8, d + 6)
 	box(m, "Floor", o * CFrame.new(0, 0.25, 0), Vector3.new(w, 0.5, d), C.plankDark)
-	walls(m, o, w, d, h, 4, C.white)
+	walls(m, o, w, d, h, 5, C.white)
 	gableRoof(m, o, w, d, h, Color3.fromRGB(60, 80, 100))
 	porch(m, o, w, d, 4, h - 1)
 	sign(
 		m,
-		o * CFrame.new(0, h - 2.6, d / 2 + 4.3),
+		-- On top of the porch awning's front edge, above head height.
+		o * CFrame.new(0, h + 0.2, d / 2 + 4.4),
 		Vector3.new(10, 1.4, 0.3),
 		"PINEHAVEN WEATHER STATION",
 		Color3.fromRGB(40, 60, 80),
@@ -730,7 +733,8 @@ end
 
 local function marthaHouse(parent: Instance, s: any): Model
 	local m = Builder.model("MarthaHouse", parent)
-	local w, d, h = 16, 12, 8
+	-- 9 studs to the eaves, 8 under the porch: Martha stands well clear.
+	local w, d, h = 16, 12, 9
 	local o = frame(m, s.x, s.z, s.yaw, w + 2, d + 7)
 	box(m, "Floor", o * CFrame.new(0, 0.25, 0), Vector3.new(w, 0.5, d), C.plankDark)
 	walls(m, o, w, d, h, 4, Color3.fromRGB(176, 150, 170), true)
