@@ -65,6 +65,7 @@ used for footsteps, jumps and splashes.
 
 | Key | Asset id | Title | Catalog |
 | --- | --- | --- | --- |
+| `bark` | 9113956187 | Coyotes Gruff Barking 13 (SFX), Caramelo's bark; not yet loaded in Studio | ProSoundEffects |
 | `birdsDay` | 9112835056 | Neighborhood Birds 1 (SFX) | ProSoundEffects |
 | `birdsDay2` | 9112835068 | Neighborhood Birds 2 (SFX) | ProSoundEffects |
 | `cricketsNight` | 9112764573 | Crickets Night 3 (SFX) | ProSoundEffects |

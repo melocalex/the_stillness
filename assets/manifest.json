@@ -1641,6 +1641,27 @@
       "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
+      "name": "dogBark",
+      "category": "audio",
+      "title": "Coyotes Gruff Barking 13 (SFX)",
+      "source_url": "https://create.roblox.com/store/asset/9113956187",
+      "author": "ProSoundEffects",
+      "license": "Roblox licensed partner catalog (free to use in Roblox experiences)",
+      "local_path": null,
+      "roblox_asset_id": 9113956187,
+      "attribution_required": false,
+      "states": {
+        "discovered": true,
+        "license_verified": true,
+        "downloaded": false,
+        "processed": false,
+        "imported": true,
+        "integrated": true,
+        "tested": false
+      },
+      "notes": "Caramelo's bark (1 s); free and from a licensed partner per the store API; not yet loaded in Studio"
+    },
+    {
       "name": "dogWhimper",
       "category": "audio",
       "title": "Coyote Whimpering Yelping Crying 6 (SFX)",
