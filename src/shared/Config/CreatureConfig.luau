@@ -153,6 +153,35 @@ CreatureConfig.Archetypes = {
 	},
 } :: { [string]: Archetype }
 
+-- Fear as food (Chapter 35, Logic/FearEcology). Rates are per second.
+CreatureConfig.Fear = {
+	riseRate = 0.25,
+	fallRate = 0.05,
+	feedRange = 90,
+	feedGain = 0.12,
+	energyDecay = 0.01,
+	appetite = 0.08,
+	hungerDecay = 0.006,
+}
+
+-- Small weighted temperaments: multipliers on how often a creature dashes,
+-- displaces, how long it stares, how often it makes noise, how long it
+-- pauses on a walk. They shape choices; species rules still apply.
+CreatureConfig.Temperaments =
+	{
+		Patient = { dash = 0.5, displace = 0.8, stare = 1.5, noise = 1.5, pause = 1.6 },
+		Impulsive = { dash = 1.8, displace = 1.0, stare = 0.6, noise = 1.0, pause = 0.6 },
+		Curious = { dash = 1.0, displace = 0.8, stare = 1.2, noise = 1.0, pause = 1.0 },
+		Deceiver = { dash = 1.0, displace = 1.8, stare = 1.0, noise = 0.7, pause = 1.0 },
+		Hungry = { dash = 1.2, displace = 1.2, stare = 1.0, noise = 0.8, pause = 0.8 },
+	} :: { [string]: { dash: number, displace: number, stare: number, noise: number, pause: number } }
+
+CreatureConfig.TemperamentOdds = {
+	Watcher = { Patient = 40, Curious = 25, Deceiver = 20, Impulsive = 10, Hungry = 5 },
+	Dweller = { Patient = 30, Curious = 40, Impulsive = 30 },
+	Crawler = { Impulsive = 50, Hungry = 30, Curious = 20 },
+} :: { [string]: { [string]: number } }
+
 -- The Old One is presentation only in this prototype: a silhouette, sounds,
 -- and an effect on the others (Watchers withdraw from it).
 CreatureConfig.OldOne = {

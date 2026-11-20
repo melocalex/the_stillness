@@ -20,6 +20,7 @@ local Journal = require("../src/shared/Logic/Journal")
 local StoryProgress = require("../src/shared/Logic/StoryProgress")
 local Mystery = require("../src/shared/Logic/Mystery")
 local Breath = require("../src/shared/Logic/Breath")
+local FearEcology = require("../src/shared/Logic/FearEcology")
 local AudioConfig = require("../src/shared/Config/AudioConfig")
 local GameConfig = require("../src/shared/Config/GameConfig")
 local CreatureConfig = require("../src/shared/Config/CreatureConfig")
@@ -723,6 +724,105 @@ describe("AudioConfig", function()
 		end
 		for _, id in AudioConfig.Cues do
 			check(id)
+		end
+	end)
+end)
+
+describe("FearEcology", function()
+	local cfg = CreatureConfig.Fear
+	local quiet = {
+		threat = 0,
+		chased = false,
+		sawCreature = false,
+		exposedDark = false,
+		unexplainedSound = false,
+		secureShelter = false,
+		nearDog = false,
+		nearFire = false,
+		nearMaya = false,
+	}
+	local function with(changes: { [string]: any }): any
+		local i = table.clone(quiet) :: any
+		for k, v in changes do
+			i[k] = v
+		end
+		return i
+	end
+	it("fear comes from fictional danger signals and stays within 0..1", function()
+		eq(FearEcology.target(quiet), 0)
+		truthy(FearEcology.target(with({ threat = 2 })) > FearEcology.target(with({ threat = 1 })))
+		local worst = with({
+			threat = 3,
+			chased = true,
+			sawCreature = true,
+			exposedDark = true,
+			unexplainedSound = true,
+		})
+		eq(FearEcology.target(worst), 1)
+	end)
+	it("home, the dog, the fire and Maya calm a character", function()
+		local scared = with({ threat = 2, sawCreature = true })
+		local held =
+			with({ threat = 2, sawCreature = true, secureShelter = true, nearDog = true, nearFire = true })
+		truthy(FearEcology.target(held) < FearEcology.target(scared))
+		eq(FearEcology.target(with({ secureShelter = true, nearMaya = true })), 0)
+	end)
+	it("fear rises fast and fades slowly", function()
+		local up = FearEcology.step(0, 1, 1, cfg)
+		local down = 1 - FearEcology.step(1, 0, 1, cfg)
+		truthy(up > down)
+		eq(FearEcology.step(0.5, 0.5, 1, cfg), 0.5)
+	end)
+	it("names the fear states, with recovery while it fades", function()
+		eq(FearEcology.state(0.05, false), "CALM")
+		eq(FearEcology.state(0.25, false), "UNEASY")
+		eq(FearEcology.state(0.5, false), "ALARMED")
+		eq(FearEcology.state(0.7, false), "TERRIFIED")
+		eq(FearEcology.state(0.9, false), "PANICKED")
+		eq(FearEcology.state(0.4, true), "RECOVERING")
+	end)
+	it("only nearby fear feeds a creature, closer is richer", function()
+		eq(FearEcology.intake(1, cfg.feedRange + 1, cfg), 0)
+		truthy(FearEcology.intake(1, 10, cfg) > FearEcology.intake(1, 60, cfg))
+	end)
+	it("calm people starve a creature back to nothing", function()
+		local e, h = 0.8, 0.8
+		for _ = 1, 400 do
+			e, h = FearEcology.feed(e, h, 0, 0.5, cfg)
+		end
+		eq(e, 0)
+		eq(h, 0)
+	end)
+	it("feeding has diminishing returns and a crowd is capped", function()
+		local lowE = FearEcology.feed(0.1, 0, 1, 1, cfg) - 0.1
+		local highE = FearEcology.feed(0.8, 0, 1, 1, cfg) - 0.8
+		truthy(lowE > highE)
+		local one = FearEcology.feed(0, 0, 1, 1, cfg)
+		local crowd = FearEcology.feed(0, 0, 5, 1, cfg)
+		eq(one, crowd)
+		local e = 0
+		for _ = 1, 2000 do
+			e = FearEcology.feed(e, 0, 1, 0.5, cfg)
+		end
+		truthy(e < 1, "constant terror never reaches full power")
+	end)
+	it("energy makes it bolder, within bounds, for every temperament", function()
+		for name, p in CreatureConfig.Temperaments do
+			local calm = FearEcology.mods(0, 0, p)
+			local fed = FearEcology.mods(1, 1, p)
+			truthy(fed.dashChance >= calm.dashChance, name)
+			truthy(fed.noiseInterval <= calm.noiseInterval, name)
+			truthy(fed.dashChance <= 0.9 and fed.displaceChance <= 0.2, name)
+			truthy(fed.stareSeconds <= 40 and calm.stareSeconds >= 6, name)
+			truthy(fed.seeksPeople and not calm.seeksPeople, name)
+		end
+	end)
+	it("every species' temperament odds name real temperaments", function()
+		for kind, odds in CreatureConfig.TemperamentOdds do
+			truthy(CreatureConfig.Archetypes[kind] ~= nil, kind)
+			for name in odds do
+				truthy(CreatureConfig.Temperaments[name] ~= nil, kind .. "." .. name)
+			end
 		end
 	end)
 end)
