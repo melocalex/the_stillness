@@ -110,7 +110,7 @@ local ANIMS: { [string]: string } = {
 -- Idle, walk and run follow the humanoid's speed. Played on the server, so
 -- every client sees the same gait. Slow speeds play the walk slowed down,
 -- which suits a creature that is pacing a treeline.
-local function animate(h: Humanoid)
+local function animate(h: Humanoid, still: boolean)
 	local animator = h:FindFirstChildOfClass("Animator") or Instance.new("Animator")
 	animator.Parent = h
 	local tracks: { [string]: AnimationTrack } = {}
@@ -140,10 +140,21 @@ local function animate(h: Humanoid)
 		end
 		t:AdjustSpeed(speed)
 	end
-	play("idle", 1)
+	-- A still creature has no idle sway: when it stops, it is a statue.
+	local function rest()
+		if still then
+			if current then
+				current:Stop(0.15)
+				current = nil
+			end
+		else
+			play("idle", 1)
+		end
+	end
+	rest()
 	h.Running:Connect(function(speed: number)
 		if speed < 0.5 then
-			play("idle", 1)
+			rest()
 		elseif speed < 14 then
 			play("walk", math.clamp(speed / 12, 0.35, 1.4))
 		else
@@ -155,7 +166,46 @@ end
 -- A vetted rigged R15 creature from assets/StillnessAssets.rbxm, moved by
 -- its own Humanoid. Returns nil when the asset is missing or not a rig, so
 -- the part-built version below is used instead.
-local function fromAsset(name: string, scale: number, speed: number, tint: Color3?): Rig?
+type Look = {
+	tint: Color3?, -- over the skin texture
+	keepAccessories: boolean?, -- leave accessory textures (a bone skull) untinted
+	eyes: Color3?,
+	eyesOn: string?, -- "Head" (default) or "Accessory"
+	still: boolean?,
+}
+
+-- Two faint points of light on the front of the head (or of a worn skull).
+local function eyes(m: Model, look: Look)
+	local color = look.eyes
+	if not color then
+		return
+	end
+	local anchor: Instance? = m:FindFirstChild("Head")
+	if look.eyesOn == "Accessory" then
+		local acc = m:FindFirstChildOfClass("Accessory")
+		anchor = if acc then acc:FindFirstChild("Handle") else anchor
+	end
+	if not anchor or not anchor:IsA("BasePart") then
+		return
+	end
+	local s = anchor.Size
+	local inset = if look.eyesOn == "Accessory" then s.Z * 0.32 else 0.03
+	local size = math.max(s.Y * 0.06, 0.1)
+	for _, side in { -1, 1 } do
+		local e =
+			part(m, "EyeGlow", Vector3.new(size, size, size), color, Enum.Material.Neon, Enum.PartType.Ball)
+		e.CastShadow = false
+		e.Transparency = 0.15
+		e.CFrame = anchor.CFrame * CFrame.new(side * s.X * 0.1, s.Y * 0.12, -s.Z / 2 + inset)
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = anchor
+		w.Part1 = e
+		w.Parent = e
+	end
+end
+
+local function fromAsset(name: string, scale: number, speed: number, look: Look): Rig?
+	local tint = look.tint
 	local m = Assets.clone(name)
 	if not m then
 		return nil
@@ -183,13 +233,18 @@ local function fromAsset(name: string, scale: number, speed: number, tint: Color
 				d.CanCollide = false
 				d.Massless = true
 			end
-		elseif d:IsA("SurfaceAppearance") and tint then
+		elseif
+			d:IsA("SurfaceAppearance")
+			and tint
+			and not (look.keepAccessories and d:FindFirstAncestorOfClass("Accessory"))
+		then
 			d.Color = tint
 		end
 	end
 	r.Transparency = 1
 	r.CanCollide = true
 	configure(h, speed)
+	eyes(m, look)
 	local head = m:FindFirstChild("Head")
 	local base = r.Position.Y - r.Size.Y / 2
 	local eye = if head and head:IsA("BasePart") then head.Position.Y - base else r.Size.Y
@@ -198,17 +253,26 @@ local function fromAsset(name: string, scale: number, speed: number, tint: Color
 		while not m:IsDescendantOf(workspace) do
 			m.AncestryChanged:Wait()
 		end
-		animate(h)
+		animate(h, look.still == true)
 	end)
 	return { model = m, root = r, humanoid = h, eyeHeight = eye }
 end
 
--- Near-black over the Watcher's skin texture: at night it reads as a shape.
-local WATCHER_TINT = Color3.fromRGB(58, 60, 64)
+-- Near-black over the Watcher's skin: at night it is a shape with two pale
+-- points where a face should be. No idle sway: when it stops, it is still.
+local WATCHER_LOOK: Look =
+	{ tint = Color3.fromRGB(40, 40, 44), eyes = Color3.fromRGB(205, 220, 235), still = true }
+-- The Dweller's body goes dark under the bone skull; dull red in the sockets.
+local DWELLER_LOOK: Look = {
+	tint = Color3.fromRGB(80, 60, 60),
+	keepAccessories = true,
+	eyes = Color3.fromRGB(190, 30, 20),
+	eyesOn = "Accessory",
+}
 
 -- Tall, thin, too still. About 11 studs.
 function Rigs.watcher(): Rig
-	local asset = fromAsset("Creature_Watcher", 0.8, 9, WATCHER_TINT)
+	local asset = fromAsset("Creature_Watcher", 0.8, 9, WATCHER_LOOK)
 	if asset then
 		return asset
 	end
@@ -247,7 +311,7 @@ end
 
 -- Hunched, long-armed, low to the floor of dark rooms.
 function Rigs.dweller(): Rig
-	local asset = fromAsset("Creature_Dweller", 1, 10, nil)
+	local asset = fromAsset("Creature_Dweller", 1, 10, DWELLER_LOOK)
 	if asset then
 		return asset
 	end

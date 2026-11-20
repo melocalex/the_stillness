@@ -11,7 +11,9 @@ local TweenService = game:GetService("TweenService")
 
 local CreatureBrain = require(ReplicatedStorage.Shared.Logic.CreatureBrain)
 local CreatureConfig = require(ReplicatedStorage.Shared.Config.CreatureConfig)
+local FearEcology = require(ReplicatedStorage.Shared.Logic.FearEcology)
 local LightVisibility = require(ReplicatedStorage.Shared.Logic.LightVisibility)
+local Net = require(ReplicatedStorage.Shared.Net)
 local Perception = require(ReplicatedStorage.Shared.Logic.Perception)
 local Shelter = require(ReplicatedStorage.Shared.Logic.Shelter)
 local Services = script.Parent.Parent.Services
@@ -70,6 +72,20 @@ export type Creature = {
 	state: string,
 	alive: boolean,
 	nextTick: number,
+	-- fear ecology and unnatural movement (Chapter 35)
+	energy: number,
+	hunger: number,
+	temperament: string,
+	profile: { dash: number, displace: number, stare: number, noise: number, pause: number },
+	dashUntil: number,
+	freezeUntil: number,
+	displaceAt: number,
+	pauseUntil: number,
+	gaitUntil: number,
+	gaitPaused: boolean,
+	noiseAt: number,
+	echoAt: number?,
+	echoCue: string?,
 }
 
 local rng = Random.new(31)
@@ -112,6 +128,26 @@ local function groundAt(pos: Vector3): Vector3
 end
 Creature.groundAt = groundAt
 
+-- A temperament from the species' weighted odds (CreatureConfig).
+local function pickTemperament(kind: string): string
+	local odds = CreatureConfig.TemperamentOdds[kind]
+	if not odds then
+		return "Curious"
+	end
+	local total = 0
+	for _, w in odds do
+		total += w
+	end
+	local roll = rng:NextNumber(0, total)
+	for name, w in odds do
+		roll -= w
+		if roll <= 0 then
+			return name
+		end
+	end
+	return "Curious"
+end
+
 function Creature.new(
 	kind: string,
 	spawnPos: Vector3,
@@ -125,6 +161,7 @@ function Creature.new(
 		else Rigs.crawler()
 	counter += 1
 	local id = kind .. "_" .. counter
+	local temperament = pickTemperament(kind)
 	local ground = groundAt(spawnPos)
 	rig.model.Name = id
 	rig.model:SetAttribute("Kind", kind)
@@ -176,7 +213,21 @@ function Creature.new(
 		state = "DORMANT",
 		alive = true,
 		nextTick = 0,
+		energy = 0,
+		hunger = 0,
+		temperament = temperament,
+		profile = CreatureConfig.Temperaments[temperament],
+		dashUntil = 0,
+		freezeUntil = 0,
+		displaceAt = 0,
+		pauseUntil = 0,
+		gaitUntil = 0,
+		gaitPaused = false,
+		noiseAt = rng:NextNumber(10, 40),
+		echoAt = nil,
+		echoCue = nil,
 	}
+	rig.model:SetAttribute("Temperament", temperament)
 	return c
 end
 
@@ -263,6 +314,10 @@ local function moveTo(c: Creature, goal: Vector3, speed: string)
 	goal = legalGoal(c, goal)
 	c.goal = goal
 	c.humanoid.WalkSpeed = (c.arch.speeds :: any)[speed] or c.arch.speeds.walk
+	if c.kind == "Crawler" then
+		-- Its rushes are faster; its dead stops (gait) more than pay for it.
+		c.humanoid.WalkSpeed *= 1.3 + 0.2 * c.energy
+	end
 	local needPath = c.pathGoal == nil
 		or ((c.pathGoal :: Vector3) - goal).Magnitude > 6
 		or now() - c.pathAt > 4
@@ -582,6 +637,267 @@ local function interiorPoint(shelterId: string): Vector3?
 	)).Position
 end
 
+-- Unnatural movement (Chapter 35) ------------------------------------------------
+-- Calm by default, sudden when it moves. Fear energy and temperament decide
+-- how often; these rules decide where: never into a shelter, never onto a
+-- player, never in view when it relocates, and never a catch mid-dash.
+
+local function mods(c: Creature): FearEcology.Mods
+	return FearEcology.mods(c.energy, c.hunger, c.profile)
+end
+
+local function unnatural(c: Creature): boolean
+	return c.model:GetAttribute("NoUnnatural") ~= true and isActiveNow(c) and not shouldRetreat(c)
+end
+
+local function playerWithin(p: Vector3, radius: number): boolean
+	for _, s in PlayerService.all() do
+		local r = PlayerService.root(s.player)
+		if r and flat(r.Position - p).Magnitude < radius then
+			return true
+		end
+	end
+	return false
+end
+
+-- Could anyone see this point? A wide cone (60 degrees either side of where
+-- they look) and a clear line: much wider than the "staring at it" test.
+local function visibleToAnyone(point: Vector3): boolean
+	for _, s in PlayerService.all() do
+		if not PlayerService.isActive(s.player) then
+			continue
+		end
+		local head = PlayerService.head(s.player)
+		if head then
+			local to = point - head.Position
+			local d = to.Magnitude
+			if d < 220 and d > 1 and s.look:Dot(to.Unit) > 0.5 then
+				local params = RaycastParams.new()
+				params.FilterType = Enum.RaycastFilterType.Exclude
+				params.FilterDescendantsInstances = { creaturesFolder() }
+				if s.player.Character then
+					params:AddToFilter(s.player.Character)
+				end
+				if workspace:Raycast(head.Position, to, params) == nil then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- Open ground it may stand on: terrain, not water, outside every shelter,
+-- 20+ studs from every player, inside its leash.
+local function standable(c: Creature, p: Vector3): Vector3?
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { creaturesFolder() }
+	params.RespectCanCollide = true
+	local hit = workspace:Raycast(p + Vector3.new(0, 120, 0), Vector3.new(0, -300, 0), params)
+	if not hit or not hit.Instance:IsA("Terrain") or hit.Material == Enum.Material.Water then
+		return nil
+	end
+	local g = hit.Position
+	if ShelterService.shelterAt(g, 4) or playerWithin(g, 20) then
+		return nil
+	end
+	if c.leash and flat(g - c.home).Magnitude > c.leash then
+		return nil
+	end
+	return g
+end
+
+local function nearTree(g: Vector3): boolean
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { creaturesFolder() }
+	for _, p in workspace:GetPartBoundsInRadius(g + Vector3.new(0, 4, 0), 6, params) do
+		if p.Name == "Collider" then
+			return true
+		end
+	end
+	return false
+end
+
+local function stand(c: Creature, g: Vector3, look: Vector3)
+	local up = Vector3.new(0, c.humanoid.HipHeight + c.root.Size.Y / 2, 0)
+	local dir = flat(look - g)
+	c.model:PivotTo(if dir.Magnitude > 0.1 then CFrame.lookAt(g + up, g + up + dir) else CFrame.new(g + up))
+	c.goal = nil
+	c.waypoints = {}
+	c.pathGoal = nil
+	c.stuckFor = 0
+	c.lastPos = g + up
+end
+
+-- Where it wants to be: what it remembers, or (when hungry) the lit house.
+local function interest(c: Creature): Vector3?
+	local hungry = mods(c).seeksPeople
+	local lk = c.brain.lastKnown
+	if lk and (hungry or c.brain.state ~= "PATROL") then
+		return lk
+	end
+	if hungry then
+		local _, bp = beacon(c)
+		if bp then
+			return bp
+		end
+	end
+	return c.goal
+end
+
+-- Spatial displacement: unseen, it is suddenly 10-22 studs closer to what
+-- it wants, also somewhere nobody is looking, then it holds still.
+local function displace(c: Creature): boolean
+	local pos = c.root.Position
+	if visibleToAnyone(Creature.eye(c)) then
+		return false
+	end
+	local target = interest(c)
+	local toward = if target then flat(target - pos) else Vector3.zero
+	local a = rng:NextNumber(0, math.pi * 2)
+	local dir = if toward.Magnitude > 1 then toward.Unit else Vector3.new(math.cos(a), 0, math.sin(a))
+	for _ = 1, 6 do
+		local side = Vector3.new(-dir.Z, 0, dir.X) * rng:NextNumber(-6, 6)
+		local g = standable(c, pos + dir * rng:NextNumber(10, 22) + side)
+		local eye = g and g + Vector3.new(0, c.humanoid.HipHeight + c.rig.eyeHeight, 0)
+		if g and eye and not visibleToAnyone(eye) then
+			stand(c, g, target or (g + dir))
+			c.displaceAt = now() + rng:NextNumber(8, 16)
+			c.freezeUntil = now() + rng:NextNumber(1.5, 4)
+			return true
+		end
+	end
+	c.displaceAt = now() + 3
+	return false
+end
+
+-- The dash: after a long stare, a burst sideways across open ground to a
+-- spot by a tree, then complete stillness. Seen, but over in a moment.
+local DASH_SPEED = 55
+local function dash(c: Creature, from: Vector3): boolean
+	local pos = c.root.Position
+	local away = flat(pos - from)
+	local base = if away.Magnitude > 1 then away.Unit else Vector3.new(1, 0, 0)
+	local pick: Vector3? = nil
+	for _ = 1, 8 do
+		local turn = math.rad(rng:NextNumber(50, 130)) * (if rng:NextNumber() < 0.5 then -1 else 1)
+		local dir = CFrame.Angles(0, turn, 0):VectorToWorldSpace(base)
+		local g = standable(c, pos + dir * rng:NextNumber(12, 18))
+		if g then
+			if nearTree(g) then
+				pick = g
+				break
+			end
+			pick = pick or g
+		end
+	end
+	local g = pick
+	if not g then
+		return false
+	end
+	c.humanoid.WalkSpeed = DASH_SPEED
+	c.humanoid:MoveTo(g)
+	c.goal = g
+	c.waypoints = {}
+	c.pathGoal = nil
+	c.dashUntil = now() + (g - pos).Magnitude / DASH_SPEED + 0.2
+	c.freezeUntil = c.dashUntil + rng:NextNumber(3, 8)
+	return true
+end
+
+-- Burst gait (Crawler, Dweller): a quick rush, a dead stop, a rush. Pauses
+-- slow its average speed, so it is jumpier but never harder to escape.
+local function gait(c: Creature, target: Vector3?): boolean
+	if (c.kind ~= "Crawler" and c.kind ~= "Dweller") or c.model:GetAttribute("NoUnnatural") == true then
+		return false
+	end
+	local t = now()
+	if c.gaitPaused then
+		if t < c.gaitUntil then
+			stop(c)
+			if target then
+				face(c, target)
+			end
+			return true
+		end
+		c.gaitPaused = false
+		c.gaitUntil = t + rng:NextNumber(0.6, 1.4) * (1 + 0.5 * c.energy)
+		return false
+	end
+	if t > c.gaitUntil then
+		c.gaitPaused = true
+		c.gaitUntil = t + rng:NextNumber(0.4, 1.4) * (1 - 0.4 * c.energy)
+		stop(c)
+		return true
+	end
+	return false
+end
+
+-- Noises are behaviour: far calls, close breathing, and at a wall a tap or
+-- a scratch that comes again a few seconds later, as if testing for an
+-- answer. Silence is the default; fear makes them more frequent.
+local NOISES: { [string]: { far: { string }, near: { string }, wall: { string } } } = {
+	Watcher = {
+		far = { "creatureCall" },
+		near = { "creatureResponse" },
+		wall = { "windowRattle", "scratch" },
+	},
+	Dweller = { far = { "floorCreak" }, near = { "creatureResponse", "floorCreak" }, wall = { "scratch" } },
+	Crawler = {
+		far = { "creatureCall" },
+		near = { "scratch", "creatureResponse" },
+		wall = { "scratch", "doorHit" },
+	},
+}
+local lastNoise = 0
+
+local function noise(name: string, pos: Vector3, volume: number)
+	Net.event("SoundCue"):FireAllClients(name, pos, volume)
+	for _, s in PlayerService.all() do
+		local r = PlayerService.root(s.player)
+		if r and (r.Position - pos).Magnitude < 60 then
+			s.player:SetAttribute("HeardCreatureAt", now())
+		end
+	end
+end
+
+local function mutter(c: Creature, pos: Vector3)
+	local t = now()
+	local echo = c.echoCue
+	if echo and c.echoAt and t >= c.echoAt then
+		c.echoAt = nil
+		c.echoCue = nil
+		noise(echo, pos, 0.4)
+		return
+	end
+	if t < c.noiseAt or t - lastNoise < 6 then
+		return
+	end
+	c.noiseAt = t + mods(c).noiseInterval * rng:NextNumber(0.7, 1.3)
+	local nearest = math.huge
+	for _, s in PlayerService.all() do
+		local r = PlayerService.root(s.player)
+		if r then
+			nearest = math.min(nearest, (r.Position - pos).Magnitude)
+		end
+	end
+	local set = NOISES[c.kind]
+	if not set or nearest > 160 then
+		return
+	end
+	local atWall = ShelterService.shelterAt(pos, 6) ~= nil and c.energy > 0.3
+	local list = if atWall then set.wall elseif nearest < 40 then set.near else set.far
+	local name = list[rng:NextInteger(1, #list)]
+	lastNoise = t
+	noise(name, pos, 0.3 + 0.4 * c.energy)
+	if atWall then
+		c.echoAt = t + rng:NextNumber(3, 6)
+		c.echoCue = name
+	end
+end
+
 -- Returns the player this creature caught, if any.
 function Creature.tick(c: Creature, dt: number): Player?
 	if not c.alive or c.climbing then
@@ -640,6 +956,24 @@ function Creature.tick(c: Creature, dt: number): Player?
 	c.model:SetAttribute("State", c.state)
 	c.targetPlayer = if seen then seen.player else nil
 	c.visibleTarget = if seen and seen.visible then seen.player else nil
+
+	-- Unnatural movement in progress: a dash runs its course, then stillness.
+	if isActiveNow(c) and not shouldRetreat(c) then
+		mutter(c, pos)
+	end
+	local tNow = now()
+	if tNow < c.dashUntil then
+		return nil
+	end
+	if tNow < c.freezeUntil and c.brain.state ~= "HUNT" and not shouldRetreat(c) then
+		stop(c)
+		local w = observedBy(c)
+		local head = if w then PlayerService.head(w) else nil
+		if head then
+			face(c, head.Position)
+		end
+		return nil
+	end
 
 	-- Breaching: on bad nights the collective sends breachers at the weakest entry.
 	if c.arch.canBreach and leadLevel == 4 and leadSector and not shouldRetreat(c) then
@@ -703,19 +1037,35 @@ function Creature.tick(c: Creature, dt: number): Player?
 			end
 		end
 		c.model:SetAttribute("Staring", false)
-		-- Moves only when unobserved; stared at too long, it withdraws.
+		-- Moves only when unobserved. Under a gaze it holds dead still; after
+		-- a long stare it either withdraws or, fed on fear, dashes. Unwatched,
+		-- it may simply be somewhere else.
 		local watcher = observedBy(c)
 		c.observedBy = watcher
 		if watcher and c.brain.state ~= "HUNT" then
 			c.observedFor += dt
 			stop(c)
-			face(c, (PlayerService.head(watcher) :: BasePart).Position)
-			if c.observedFor > 12 then
-				Creature.flee(c, 60)
+			local from = (PlayerService.head(watcher) :: BasePart).Position
+			face(c, from)
+			local m = mods(c)
+			if c.observedFor > m.stareSeconds then
+				c.observedFor = 0
+				if not (unnatural(c) and rng:NextNumber() < m.dashChance and dash(c, from)) then
+					Creature.flee(c, 60)
+				end
 			end
 			return nil
 		else
 			c.observedFor = math.max(0, c.observedFor - dt * 0.5)
+			if
+				unnatural(c)
+				and c.brain.state ~= "HUNT"
+				and tNow >= c.displaceAt
+				and rng:NextNumber() < mods(c).displaceChance * dt
+				and displace(c)
+			then
+				return nil
+			end
 		end
 	end
 
@@ -746,6 +1096,9 @@ function Creature.tick(c: Creature, dt: number): Player?
 	-- Getting into a shelter that has an opening: doors are walked through,
 	-- windows are climbed through.
 	local function goToward(target: Vector3, speed: string)
+		if c.kind == "Watcher" and speed == "walk" then
+			speed = "slow" -- it never hurries toward a house; it arrives
+		end
 		local targetShelter = ShelterService.shelterAt(target, 1)
 		if targetShelter and targetShelter ~= myShelter and not ShelterService.isSecure(targetShelter) then
 			local openings = ShelterService.openings(targetShelter)
@@ -808,6 +1161,9 @@ function Creature.tick(c: Creature, dt: number): Player?
 
 	local caught: Player? = nil
 	local kind = intent.kind
+	if (kind == "MoveTo" or kind == "Chase" or kind == "Wander") and gait(c, intent.position) then
+		return nil
+	end
 	if kind == "Idle" then
 		stop(c)
 	elseif kind == "Look" then
@@ -816,7 +1172,17 @@ function Creature.tick(c: Creature, dt: number): Player?
 			face(c, intent.position :: Vector3)
 		end
 	elseif kind == "Patrol" then
-		if c.goal == nil or Creature.arrived(c, 5) or rng:NextNumber() < 0.01 then
+		if c.kind == "Watcher" and tNow < c.pauseUntil then
+			-- Long observation: still, facing the lit house if there is one.
+			stop(c)
+			local _, bp = beacon(c)
+			if bp then
+				face(c, bp)
+			end
+		elseif c.kind == "Watcher" and c.goal ~= nil and Creature.arrived(c, 5) then
+			c.pauseUntil = tNow + rng:NextNumber(6, 18) * c.profile.pause
+			stop(c)
+		elseif c.goal == nil or Creature.arrived(c, 5) or rng:NextNumber() < 0.01 then
 			goToward(randomPatrolPoint(c), "slow")
 		else
 			goToward(c.goal :: Vector3, "slow")

@@ -120,6 +120,8 @@ local function firstWatcher()
 		home,
 		{ patrol = far, leash = 95, retreatTo = CreatureService.edgePoint(75, 240) }
 	)
+	-- The lesson Watcher stays readable: no dashes or displacement.
+	c.model:SetAttribute("NoUnnatural", true)
 	MayaService.setRoom("Upstairs", false)
 	MayaService.setRoom("Downstairs", false)
 
@@ -129,6 +131,9 @@ local function firstWatcher()
 	task.spawn(function()
 		local lastLine = 0
 		while lessonOn and alive(c) do
+			-- Maya tells the player to look at it: a long look must not send
+			-- it home before the coat and darkness steps.
+			c.observedFor = 0
 			if c.brain.state == "HUNT" then
 				CreatureBrain.forget(c.brain)
 				c.brain.state = "PATROL"
