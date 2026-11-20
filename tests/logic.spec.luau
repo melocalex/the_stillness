@@ -25,6 +25,7 @@ local AudioConfig = require("../src/shared/Config/AudioConfig")
 local GameConfig = require("../src/shared/Config/GameConfig")
 local CreatureConfig = require("../src/shared/Config/CreatureConfig")
 local StoryConfig = require("../src/shared/Config/StoryConfig")
+local RadioConfig = require("../src/shared/Config/RadioConfig")
 
 local D = { Day = 720, Dusk = 180, Night = 480, Dawn = 120 }
 
@@ -824,6 +825,54 @@ describe("FearEcology", function()
 				truthy(CreatureConfig.Temperaments[name] ~= nil, kind .. "." .. name)
 			end
 		end
+	end)
+end)
+
+describe("RadioConfig", function()
+	local CONDITIONS = {
+		morning = true,
+		day = true,
+		evening = true,
+		night = true,
+		dawn = true,
+		clear = true,
+		fog = true,
+		rain = true,
+		storm = true,
+		badNight = true,
+		uneasy = true,
+		peaceful = true,
+		creatureNear = true,
+		watcherNear = true,
+		crawlerNear = true,
+		creatureFed = true,
+		oldOne = true,
+		cabinLit = true,
+		cabinDark = true,
+		dogAlert = true,
+		scared = true,
+		mayaKnown = true,
+		mayaLit = true,
+	}
+	it("every line needs only real conditions or known story facts", function()
+		for _, line in RadioConfig.Lines do
+			truthy(#line.text > 0 and #line.need > 0, line.text)
+			for _, need in line.need do
+				local key = if string.sub(need, 1, 1) == "!" then string.sub(need, 2) else need
+				if string.sub(key, 1, 5) == "fact:" then
+					truthy(StoryConfig.KnownFacts[string.sub(key, 6)] ~= nil, "unknown fact " .. key)
+				else
+					truthy(CONDITIONS[key], "unknown condition " .. key)
+				end
+			end
+		end
+	end)
+	it("has a report and a forecast word for every weather", function()
+		for label in GameConfig.Weather.Visibility do
+			truthy(RadioConfig.Weather[label] ~= nil, label)
+			truthy(RadioConfig.Forecast[label] ~= nil, label)
+		end
+		truthy(RadioConfig.Forecast.Unknown ~= nil)
 	end)
 end)
 

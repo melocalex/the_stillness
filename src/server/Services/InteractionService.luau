@@ -9,9 +9,12 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Net = require(ReplicatedStorage.Shared.Net)
+local RadioConfig = require(ReplicatedStorage.Shared.Config.RadioConfig)
 local StoryConfig = require(ReplicatedStorage.Shared.Config.StoryConfig)
+local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
 local LightService = require(script.Parent.LightService)
 local NoiseService = require(script.Parent.NoiseService)
 local PlayerService = require(script.Parent.PlayerService)
@@ -585,23 +588,118 @@ function InteractionService.setRadioHook(fn: (Player) -> boolean)
 	radioHook = fn
 end
 
-local function radioText(): string
+-- The radio talks about what is happening (RadioConfig). Conditions come from
+-- the live game; matching lines win, specific ones more often, and a player
+-- does not hear the same line again until several others have played.
+local heard: { [Player]: { string } } = setmetatable({}, { __mode = "k" }) :: any
+local NEXT_PHASE = { Day = "Dusk", Dusk = "Night", Night = "Dawn", Dawn = "Day" }
+
+local function radioConditions(player: Player): { [string]: boolean }
+	local snap = TimeService.snapshot()
+	local f: { [string]: boolean } = {}
+	f.morning = snap.phase == "Day" and snap.clockTime < 11
+	f.day = snap.phase == "Day"
+	f.evening = snap.phase == "Dusk"
+	f.night = snap.phase == "Night" or snap.phase == "Dusk"
+	f.dawn = snap.phase == "Dawn"
+	local weather = ReplicatedStorage:GetAttribute("Weather")
+	f.clear = weather == "Clear"
+	f.fog = weather == "Fog"
+	f.rain = weather == "Rain"
+	f.storm = weather == "Storm"
 	local nightType = ReplicatedStorage:GetAttribute("NightType")
-	local phase = TimeService.snapshot().phase
-	local night = phase == "Dusk" or phase == "Night"
-	if night and (nightType == "Bad" or nightType == "Black") then
-		return "Static... '...stay dark. Lights off. Curtains shut. Don't move when they're close. They talk to each other. They hear you breathe.'"
-	end
-	if ReplicatedStorage:GetAttribute("Weather") == "Storm" then
-		return "Static... '...severe weather. Latch your windows. Wind will open what isn't locked.'"
-	end
-	if StoryService.getFact("radioFound") then
-		if StoryService.getFact("survivedNight3") then
-			return "The voice again, clearer: '...north of the ridge. By daylight. North.'"
+	f.badNight = f.night and (nightType == "Bad" or nightType == "Black")
+	f.uneasy = nightType == "Uneasy"
+	f.peaceful = nightType == "Peaceful"
+	local cabin = Vector3.new(WorldConfig.Cabin.x, WorldConfig.Cabin.floorY, WorldConfig.Cabin.z)
+	for _, m in CollectionService:GetTagged("Creature") do
+		local state = m:GetAttribute("State")
+		if m:IsA("Model") and state ~= "DORMANT" and state ~= "RETREAT" then
+			if (m:GetPivot().Position - cabin).Magnitude < 120 then
+				f.creatureNear = true
+				local kind = m:GetAttribute("Kind")
+				f.watcherNear = f.watcherNear or kind == "Watcher"
+				f.crawlerNear = f.crawlerNear or kind == "Crawler"
+				f.creatureFed = f.creatureFed or ((m:GetAttribute("FearEnergy") :: number?) or 0) > 0.5
+			end
 		end
-		return "On the scratched frequency: '...if you can hear this, you are not alone out there. Keep the fire small.'"
 	end
-	return "Only static. Somewhere under it, something like a voice."
+	f.oldOne = ReplicatedStorage:GetAttribute("OldOneVisible") == true
+	local electric = LightService.shelterLights("Cabin")
+	f.cabinLit = electric > 0
+	f.cabinDark = electric == 0
+	f.scared = ((player:GetAttribute("Fear") :: number?) or 0) > 0.4
+	for _, d in CollectionService:GetTagged("Dog") do
+		if d:GetAttribute("Owner") == player.UserId and d:GetAttribute("Alert") == true then
+			f.dogAlert = true
+		end
+	end
+	f.mayaKnown = StoryService.getFact("talkedToMaya") == true
+	local maya = CollectionService:GetTagged("MayaHouse")[1]
+	f.mayaLit = maya ~= nil
+		and (maya:GetAttribute("Upstairs") == true or maya:GetAttribute("Downstairs") == true)
+	return f
+end
+
+local function holds(f: { [string]: boolean }, need: string): boolean
+	local negate = string.sub(need, 1, 1) == "!"
+	local key = if negate then string.sub(need, 2) else need
+	local value = if string.sub(key, 1, 5) == "fact:"
+		then StoryService.getFact(string.sub(key, 6)) == true
+		else f[key] == true
+	return value ~= negate
+end
+
+-- The known forecast for the next part of the day: scripted days are known,
+-- later days are honest about not knowing.
+local function forecast(): string
+	local snap = TimeService.snapshot()
+	local nextPhase = NEXT_PHASE[snap.phase]
+	local day = if snap.phase == "Dawn" then snap.day + 1 else snap.day
+	local scripted = GameConfig.Weather.Scripted[day]
+	local label = if scripted and nextPhase then scripted[nextPhase] else nil
+	return RadioConfig.Forecast[label or "Unknown"] or RadioConfig.Forecast.Unknown
+end
+
+local function radioText(player: Player): string
+	local f = radioConditions(player)
+	local recent = heard[player] or {}
+	heard[player] = recent
+	local options: { { text: string, w: number } } = {}
+	for _, line in RadioConfig.Lines do
+		local ok = not table.find(recent, line.text)
+		for _, need in line.need do
+			ok = ok and holds(f, need)
+		end
+		if ok then
+			table.insert(options, { text = line.text, w = (line.weight or 1) * (1 + #line.need) })
+		end
+	end
+	local reports = RadioConfig.Weather[ReplicatedStorage:GetAttribute("Weather") :: string]
+	if reports and not f.badNight then
+		local text = (string.gsub(reports[math.random(1, #reports)], "{next}", forecast()))
+		if not table.find(recent, text) then
+			table.insert(options, { text = text, w = 4 })
+		end
+	end
+	local pick = RadioConfig.Fallback
+	local total = 0
+	for _, o in options do
+		total += o.w
+	end
+	local roll = math.random() * total
+	for _, o in options do
+		roll -= o.w
+		if roll <= 0 then
+			pick = o.text
+			break
+		end
+	end
+	table.insert(recent, pick)
+	while #recent > RadioConfig.NoRepeat do
+		table.remove(recent, 1)
+	end
+	return pick
 end
 
 local function setupProps(world: Instance)
@@ -657,7 +755,7 @@ local function setupProps(world: Instance)
 		elseif p.Name == "RadioPrompt" then
 			p.Triggered:Connect(function(player)
 				if near(player, p) and not (radioHook and radioHook(player)) then
-					Net.event("Radio"):FireClient(player, radioText())
+					Net.event("Radio"):FireClient(player, radioText(player))
 					cue("radioStatic", part.Position, 0.6)
 					NoiseService.emit(part.Position, "radio", player)
 				end
