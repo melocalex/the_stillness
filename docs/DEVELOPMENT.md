@@ -61,6 +61,19 @@ game.ReplicatedStorage:SetAttribute("TimeScale", 30)
    into `src/shared/Config/AudioConfig.luau`.
 5. Record the asset in `docs/ASSET_LICENSES.md`.
 
+## Changing the terrain
+
+The valley comes from data in `src/shared/Config/WorldConfig.luau` and the
+height function in `src/shared/Logic/Heightfield.luau`. After a change, run
+the gate, then redraw the maps in `docs/`:
+
+```bash
+lune run tools/terrain/render_map docs 480
+```
+
+[WORLD.md](WORLD.md) explains the layers, the regions and the positions
+other code depends on.
+
 ## Publishing
 
 Publishing needs your Roblox account and is a manual step:
