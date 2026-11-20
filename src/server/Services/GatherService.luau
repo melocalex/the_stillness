@@ -168,12 +168,23 @@ local function setup(node: Instance)
 	end
 	if kindName == "Tree" and part:IsA("BasePart") then
 		-- A bright ribbon around the trunk marks the trees you can chop.
-		local bottomY = part.Position.Y - part.Size.X / 2
+		local groundY = part.Position.Y - part.Size.X / 2
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { workspace.Terrain }
+		local hit = workspace:Raycast(
+			Vector3.new(part.Position.X, part.Position.Y + 40, part.Position.Z),
+			Vector3.new(0, -120, 0),
+			params
+		)
+		if hit then
+			groundY = hit.Position.Y
+		end
 		local ribbon = Instance.new("Part")
 		ribbon.Name = "Ribbon"
 		ribbon.Shape = Enum.PartType.Cylinder
-		ribbon.Size = Vector3.new(0.7, 3.6, 3.6)
-		ribbon.CFrame = CFrame.new(part.Position.X, bottomY + 3.6, part.Position.Z)
+		ribbon.Size = Vector3.new(0.55, 2.9, 2.9)
+		ribbon.CFrame = CFrame.new(part.Position.X, groundY + 4.2, part.Position.Z)
 			* CFrame.Angles(0, 0, math.rad(90))
 		ribbon.Color = Color3.fromRGB(235, 110, 30)
 		ribbon.Material = Enum.Material.Fabric
