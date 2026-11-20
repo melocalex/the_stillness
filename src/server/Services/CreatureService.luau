@@ -133,7 +133,39 @@ local function updateThreats()
 	end
 end
 
+-- Studio-only test hook: set the ReplicatedStorage attribute DebugSpawn to a
+-- creature kind to place one 70 studs north of the cabin, fed with
+-- DebugEnergy (0..1) of fear. Does nothing in a published game.
+local function debugHook()
+	if not RunService:IsStudio() then
+		return
+	end
+	ReplicatedStorage:GetAttributeChangedSignal("DebugSpawn"):Connect(function()
+		local kind = ReplicatedStorage:GetAttribute("DebugSpawn")
+		if type(kind) ~= "string" or kind == "" then
+			return
+		end
+		ReplicatedStorage:SetAttribute("DebugSpawn", "")
+		local patrol = {}
+		for i = 1, 5 do
+			table.insert(patrol, CreatureService.edgePoint((i - 3) * 20, 50 + (i % 2) * 20))
+		end
+		local ok, c = pcall(CreatureService.spawn, kind, CreatureService.edgePoint(0, 70), {
+			patrol = patrol,
+			leash = 120,
+			retreatTo = CreatureService.edgePoint(75, 240),
+		})
+		if ok and c then
+			c.energy = math.clamp((ReplicatedStorage:GetAttribute("DebugEnergy") :: number?) or 0, 0, 1)
+			print("[Creature] debug spawn", c.id, c.temperament, c.energy)
+		else
+			warn("[Creature] debug spawn failed: " .. tostring(c))
+		end
+	end)
+end
+
 function CreatureService.start()
+	debugHook()
 	NoiseService.onNoise(function(ev)
 		for _, c in creatures do
 			local reach = ev.loudness * c.arch.senses.hearingMultiplier + 5
