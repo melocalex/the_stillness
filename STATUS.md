@@ -45,9 +45,11 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
   skull), Crawler (grey beast) and the Old One (74-stud black Watcher). The
   Watcher and Dweller play Roblox's walk animation when moving.
 - The Watcher at night: a near-black silhouette with two pale eye points;
-  its head turns toward the camera. Under a direct gaze it held still for
-  about 30 s, then resumed. Its fear energy fell from 0.8 to 0.35 with
-  nobody afraid nearby (starving works).
+  its head turns toward the camera. Its fear energy fell from 0.8 to 0.35
+  with nobody afraid nearby (starving works). It stood near the north wall
+  for about 30 s in searching states, then moved on; whether that was the
+  gaze freeze is not confirmed (a finished stare should end in a dash or a
+  retreat, and the log showed neither).
 - Caramelo's mood (build head7, night 2): asleep on his bed, his agitation
   rose as a Watcher approached; head up (level 1) at about 40 studs,
   suspicious (level 2, the growl level) at about 16 studs, back to sleep
@@ -88,6 +90,14 @@ Chapter 35, the unnatural creatures (ca7b018, 8287b7e):
   Maya darkening her house when something is near the cabin (e45a3db).
 - Night stories for Peaceful and Uneasy nights (933d919) and Caramelo's
   frightened body language (f79fb37).
+- Fixes after a code review: a tap, scratch or dash now startles Caramelo,
+  so a Watcher at the glass can make an untrained dog bark (spec added); a
+  defensive bark resets only the nearest Crawler; a window hop or a return
+  walks all the way before the "lost sight" clock starts; the night-1 look
+  step checks observedBy; passing Watchers avoid the lake.
+- Studio test aids: DebugSpawn, DebugEnergy, DebugTemperament and
+  DebugStory attributes on ReplicatedStorage, and a LastMove attribute
+  (dash, displace, hop, return) on each creature.
 - The radio drawing every line from what is happening (569ea4e).
 
 Chapter 38, Caramelo (ac163c4, 638d6d1):

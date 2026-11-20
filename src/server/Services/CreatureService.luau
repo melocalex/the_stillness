@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CreatureConfig = require(ReplicatedStorage.Shared.Config.CreatureConfig)
 local Net = require(ReplicatedStorage.Shared.Net)
 local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
 local NoiseService = require(script.Parent.NoiseService)
@@ -135,7 +136,8 @@ end
 
 -- Studio-only test hook: set the ReplicatedStorage attribute DebugSpawn to a
 -- creature kind to place one 70 studs north of the cabin, fed with
--- DebugEnergy (0..1) of fear. Does nothing in a published game.
+-- DebugEnergy (0..1) of fear and, if DebugTemperament names one, with that
+-- temperament. Does nothing in a published game.
 local function debugHook()
 	if not RunService:IsStudio() then
 		return
@@ -157,6 +159,12 @@ local function debugHook()
 		})
 		if ok and c then
 			c.energy = math.clamp((ReplicatedStorage:GetAttribute("DebugEnergy") :: number?) or 0, 0, 1)
+			local temperament = ReplicatedStorage:GetAttribute("DebugTemperament")
+			if type(temperament) == "string" and CreatureConfig.Temperaments[temperament] then
+				c.temperament = temperament
+				c.profile = CreatureConfig.Temperaments[temperament]
+				c.model:SetAttribute("Temperament", temperament)
+			end
 			print("[Creature] debug spawn", c.id, c.temperament, c.energy)
 		else
 			warn("[Creature] debug spawn failed: " .. tostring(c))

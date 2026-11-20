@@ -833,8 +833,14 @@ describe("DogMind", function()
 	local cfg = DogMind.Default
 	local all = { heard = true, seen = true, presence = true }
 	local none = { heard = false, seen = false, presence = false }
-	local alone =
-		{ ownerNear = false, concealed = false, mayaNear = false, inShelter = false, thunder = false }
+	local alone = {
+		ownerNear = false,
+		concealed = false,
+		mayaNear = false,
+		inShelter = false,
+		thunder = false,
+		startle = 0,
+	}
 	it("senses closer things more strongly, and nothing he cannot sense", function()
 		local m = DogMind.new()
 		truthy(DogMind.signal(m, "Watcher", 10, all) > DogMind.signal(m, "Watcher", 60, all))
@@ -882,6 +888,19 @@ describe("DogMind", function()
 		DogMind.train(m, "quietness", 1)
 		truthy(DogMind.barkChance(m, false, 1, cfg) < raw)
 	end)
+	it("a Watcher tapping at the glass can make an untrained dog bark", function()
+		local m = DogMind.new()
+		local signal = DogMind.signal(m, "Watcher", 6, all)
+		local indoors = table.clone(alone)
+		indoors.inShelter = true
+		eq(DogMind.target(m, signal, indoors) < cfg.up[4], true, "without a sudden sound he only growls")
+		indoors.startle = 0.35
+		for _ = 1, 20 do
+			DogMind.step(m, DogMind.target(m, signal, indoors), 0.5, cfg)
+		end
+		eq(m.level, 4)
+		truthy(DogMind.barkChance(m, false, 1, cfg) > 0)
+	end)
 	it("calming helps step by step, less with a threat close", function()
 		local m = DogMind.new()
 		m.agitation = 1
@@ -895,19 +914,23 @@ describe("DogMind", function()
 	it("his person, the coat and Maya soothe him; thunder unsettles him", function()
 		local m = DogMind.new()
 		local base = DogMind.target(m, 0.8, alone)
-		local held = DogMind.target(
-			m,
-			0.8,
-			{ ownerNear = true, concealed = true, mayaNear = false, inShelter = true, thunder = false }
-		)
+		local held = DogMind.target(m, 0.8, {
+			ownerNear = true,
+			concealed = true,
+			mayaNear = false,
+			inShelter = true,
+			thunder = false,
+			startle = 0,
+		})
 		truthy(held < base * 0.5)
-		truthy(
-			DogMind.target(
-				m,
-				0,
-				{ ownerNear = false, concealed = false, mayaNear = false, inShelter = false, thunder = true }
-			) > 0
-		)
+		truthy(DogMind.target(m, 0, {
+			ownerNear = false,
+			concealed = false,
+			mayaNear = false,
+			inShelter = false,
+			thunder = true,
+			startle = 0,
+		}) > 0)
 		eq(DogMind.state(m, true), "CONCEALED")
 		eq(DogMind.state(m, false), "RELAXED")
 	end)

@@ -88,6 +88,8 @@ export type Creature = {
 	echoCue: string?,
 	hops: number, -- window-to-window moves this visit
 	tapPending: boolean,
+	windowSince: number, -- when it set off for the current window
+	windowArrived: boolean,
 	returnWindow: Instance?, -- a false departure: it will come back here
 	returnAt: number,
 }
@@ -232,6 +234,8 @@ function Creature.new(
 		echoCue = nil,
 		hops = 0,
 		tapPending = false,
+		windowSince = 0,
+		windowArrived = false,
 		returnWindow = nil,
 		returnAt = 0,
 	}
@@ -739,6 +743,22 @@ local function stand(c: Creature, g: Vector3, look: Vector3)
 	c.lastPos = g + up
 end
 
+-- Dogs near a sudden sound or movement jump at it (DogService reads this).
+local function startleDogs(pos: Vector3, radius: number, strength: number)
+	for _, dog in CollectionService:GetTagged("Dog") do
+		if dog:IsA("Model") and (dog:GetPivot().Position - pos).Magnitude < radius then
+			dog:SetAttribute("StartleStrength", strength)
+			dog:SetAttribute("StartledAt", now())
+		end
+	end
+end
+
+-- Which unnatural move it made last, for logs and tests in Studio.
+local function moved(c: Creature, how: string)
+	c.model:SetAttribute("LastMove", how)
+	c.model:SetAttribute("LastMoveAt", now())
+end
+
 -- Where it wants to be: what it remembers, or (when hungry) the lit house.
 local function interest(c: Creature): Vector3?
 	local hungry = mods(c).seeksPeople
@@ -774,6 +794,7 @@ local function displace(c: Creature): boolean
 			stand(c, g, target or (g + dir))
 			c.displaceAt = now() + rng:NextNumber(8, 16)
 			c.freezeUntil = now() + rng:NextNumber(1.5, 4)
+			moved(c, "displace")
 			return true
 		end
 	end
@@ -812,6 +833,8 @@ local function dash(c: Creature, from: Vector3): boolean
 	c.pathGoal = nil
 	c.dashUntil = now() + (g - pos).Magnitude / DASH_SPEED + 0.2
 	c.freezeUntil = c.dashUntil + rng:NextNumber(3, 8)
+	startleDogs(g, 60, 0.3)
+	moved(c, "dash")
 	return true
 end
 
@@ -861,8 +884,11 @@ local NOISES: { [string]: { far: { string }, near: { string }, wall: { string } 
 }
 local lastNoise = 0
 
+local SUDDEN: { [string]: boolean } = { windowRattle = true, scratch = true, doorHit = true }
+
 local function noise(name: string, pos: Vector3, volume: number)
 	Net.event("SoundCue"):FireAllClients(name, pos, volume)
+	startleDogs(pos, if SUDDEN[name] then 40 else 25, if SUDDEN[name] then 0.35 else 0.15)
 	for _, s in PlayerService.all() do
 		local r = PlayerService.root(s.player)
 		if r and (r.Position - pos).Magnitude < 60 then
@@ -928,7 +954,10 @@ local function goToWindow(c: Creature, w: Instance)
 	c.windowStare = 0
 	c.windowLimit = rng:NextNumber(15, 30)
 	c.lastSeenThroughWindow = now()
+	c.windowSince = now()
+	c.windowArrived = false
 	c.tapPending = true
+	moved(c, "hop")
 	local watch = w:FindFirstChild("WatchPoint")
 	if watch and watch:IsA("BasePart") and not visibleToAnyone(Creature.eye(c)) then
 		local g = watch.Position
@@ -1051,6 +1080,8 @@ function Creature.tick(c: Creature, dt: number): Player?
 				c.windowStare = 0
 				c.windowLimit = rng:NextNumber(25, 50)
 				c.hops = 0
+				c.windowSince = now()
+				c.windowArrived = false
 			end
 		end
 		local w = c.window
@@ -1058,9 +1089,20 @@ function Creature.tick(c: Creature, dt: number): Player?
 			local watch = w:FindFirstChild("WatchPoint")
 			local glass = w:FindFirstChild("Glass")
 			if watch and watch:IsA("BasePart") and glass and glass:IsA("BasePart") then
-				-- Curtains or shutters shut it out quickly; otherwise it waits.
+				-- It walks to the window first (up to 25 s); the clock for losing
+				-- sight starts when it arrives. Curtains or shutters then shut it
+				-- out quickly; otherwise it waits.
+				local atWatch = flat(watch.Position - pos).Magnitude <= 3
+				if not atWatch and now() - c.windowSince < 25 then
+					moveTo(c, watch.Position, "slow")
+					return nil
+				end
+				if atWatch and not c.windowArrived then
+					c.windowArrived = true
+					c.lastSeenThroughWindow = now()
+				end
 				local shut = w:GetAttribute("CurtainsClosed") == true or w:GetAttribute("Shuttered") == true
-				local lost = now() - c.lastSeenThroughWindow > (if shut then 3 else 9)
+				local lost = not atWatch or now() - c.lastSeenThroughWindow > (if shut then 3 else 9)
 				if lost or c.windowStare > c.windowLimit then
 					c.window = nil
 					c.windowCooldown = now() + rng:NextNumber(40, 90)
@@ -1078,9 +1120,6 @@ function Creature.tick(c: Creature, dt: number): Player?
 							c.returnAt = now() + rng:NextNumber(20, 40)
 						end
 					end
-				elseif flat(watch.Position - pos).Magnitude > 3 then
-					moveTo(c, watch.Position, "slow")
-					return nil
 				else
 					stop(c)
 					face(c, glass.Position)
@@ -1108,6 +1147,9 @@ function Creature.tick(c: Creature, dt: number): Player?
 				c.windowStare = 0
 				c.windowLimit = rng:NextNumber(15, 30)
 				c.lastSeenThroughWindow = now()
+				c.windowSince = now()
+				c.windowArrived = false
+				moved(c, "return")
 			end
 		end
 		c.model:SetAttribute("Staring", false)

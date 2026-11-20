@@ -173,7 +173,8 @@ local function firstWatcher()
 		MayaService.radio("Look out your north window. Slowly.")
 		if
 			not step(function()
-				return c.observedFor > 0.5 or anyPlayer(function(s)
+				-- observedBy, not observedFor: the guard keeps observedFor at zero.
+				return c.observedBy ~= nil or anyPlayer(function(s)
 					return s.observing ~= nil
 				end)
 			end, 45)

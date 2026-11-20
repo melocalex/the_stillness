@@ -31,6 +31,7 @@ export type Context = {
 	mayaNear: boolean,
 	inShelter: boolean,
 	thunder: boolean,
+	startle: number, -- 0..0.5, a sudden tap, scratch or dash nearby, fading
 }
 
 export type Config = {
@@ -96,6 +97,8 @@ function DogMind.target(mind: Mind, signal: number, c: Context): number
 	if c.thunder then
 		t = math.max(t, 0.3)
 	end
+	-- A sudden sound or movement on top of what he already senses.
+	t += math.clamp(c.startle, 0, 0.5)
 	local soothe = 1
 	if c.ownerNear then
 		soothe *= 0.85 - 0.15 * mind.bond

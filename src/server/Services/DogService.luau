@@ -20,6 +20,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CreatureBrain = require(ReplicatedStorage.Shared.Logic.CreatureBrain)
 local DogMind = require(ReplicatedStorage.Shared.Logic.DogMind)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -64,6 +65,8 @@ type Dog = {
 	hideTrained: boolean,
 	gustAt: number,
 	threatDist: number,
+	startle: number,
+	lastStartle: number,
 	petPrompt: ProximityPrompt?,
 	hidePrompt: ProximityPrompt?,
 }
@@ -268,8 +271,20 @@ local function bark(d: Dog, panic: boolean, threatDist: number)
 			task.wait(0.45)
 		end
 	end)
+	-- A single bark can make the nearest Crawler lose interest for a moment.
+	-- Only one, and it forgets rather than leaving, so a breach still holds.
 	if not panic and threatDist < 14 and math.random() < 0.5 then
-		CreatureService.fleeFrom(d.root.Position, 14, "Crawler")
+		local nearest, nearestD = nil, 14
+		for _, c in CreatureService.list() do
+			local cd = (c.root.Position - d.root.Position).Magnitude
+			if c.kind == "Crawler" and cd < nearestD then
+				nearest, nearestD = c, cd
+			end
+		end
+		if nearest then
+			CreatureBrain.forget(nearest.brain)
+			nearest.brain.state = "PATROL"
+		end
 	end
 	if now() - d.barkNoticeAt > 20 then
 		d.barkNoticeAt = now()
@@ -349,12 +364,20 @@ local function tickDog(d: Dog, dt: number)
 	-- His senses, his mood, his reactions.
 	local signal, kind, threatPos, threatDist = sense(d)
 	d.threatDist = threatDist
+	-- A tap at the glass, a scratch on the wall, a dash past the window.
+	local startledAt = d.model:GetAttribute("StartledAt") :: number?
+	if startledAt and startledAt > d.lastStartle then
+		d.lastStartle = startledAt
+		d.startle = math.max(d.startle, (d.model:GetAttribute("StartleStrength") :: number?) or 0.3)
+	end
+	d.startle = math.max(0, d.startle - 0.08 * dt)
 	local target = DogMind.target(d.mind, signal, {
 		ownerNear = dist < 12,
 		concealed = d.concealed,
 		mayaNear = mayaNear(pos),
 		inShelter = ShelterService.shelterAt(pos, 1) ~= nil,
 		thunder = false,
+		startle = d.startle,
 	})
 	local wasLevel, peakBefore = d.mind.level, d.mind.peak
 	DogMind.step(d.mind, target, dt, DogMind.Default)
@@ -693,6 +716,8 @@ local function createDog(player: Player, character: Model)
 		hideTrained = false,
 		gustAt = -1e9,
 		threatDist = math.huge,
+		startle = 0,
+		lastStartle = 0,
 		petPrompt = if petPart then petPart:FindFirstChild("PetPrompt") :: ProximityPrompt? else nil,
 		hidePrompt = hidePrompt,
 	}

@@ -6,6 +6,7 @@
 -- BirdsQuiet.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -76,6 +77,12 @@ local function pickStory(t: string): string?
 	if not weights then
 		return nil
 	end
+	-- Studio-only: DebugStory forces the next ordinary night's story.
+	local forced = ReplicatedStorage:GetAttribute("DebugStory")
+	if RunService:IsStudio() and type(forced) == "string" and forced ~= "" then
+		ReplicatedStorage:SetAttribute("DebugStory", "")
+		return forced
+	end
 	local pool, total = {}, 0
 	for name, w in weights do
 		if name == "quiet" or not table.find(recent, name) then
@@ -137,7 +144,8 @@ local function tellStory(story: string, nightLen: number)
 			watcherAround(b, d + 15, 15, 45, 6)
 		end)
 	elseif story == "passerby" then
-		local b = rng:NextNumber(0, 360)
+		-- Any direction but north, where the lake is.
+		local b = rng:NextNumber(35, 325)
 		after(at, function()
 			watcherAround(b, 140, 10, nil, 25)
 		end)
