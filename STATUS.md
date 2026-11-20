@@ -18,9 +18,15 @@ Updated 2026-11-20. Four columns of truth:
 - Objective tracker: "Find shelter" completes when you reach the cabin and
   advances to "Collect wood".
 - HUD comfort and exposure bars.
-- Dog follows the player (old part-built body; the Caramelo mesh is not yet
-  verified in Studio).
-- 59/59 audio ids load in Studio; 13 vetted models import with zero scripts.
+- Caramelo: caramel mesh dog follows and runs with the walk animation;
+  T pets him (message shown; no petting animation yet).
+- Core loop: orange-ribbon trees show "Chop" (hold E), two trees gave 12
+  wood, "Collect wood" completed; door repair (5 wood) completed; door opens;
+  fireplace lights with flames and warm light; "Bring your dog inside"
+  completed; objective reached "Survive the first night".
+- Dog panel (G) opens. Pack moved to P (Roblox reserves Tab and I).
+- 80/80 licensed audio ids load in Studio; 13 vetted models import with zero
+  scripts; "The Mechanism" uploaded (85164647841567) and loads.
 
 ## Implemented and checked, not yet Studio-tested
 
@@ -49,6 +55,12 @@ Updated 2026-11-20. Four columns of truth:
   with radio dialogue and a storm emergency (Chapters 32 and 33).
 
 ## Open
+
+- Petting animation for Caramelo.
+- Richer soundtrack: "The Mechanism" is a single-voice music box; the owner
+  wants more complex, layered music.
+- Toast messages overlap prompts at the bottom of the screen.
+- Bookshelf asset faces the wrong way; rocking chair a bit small.
 
 - Full Studio playthrough of the three-night loop, creatures and bad night.
 - Dog walk animation in a published game needs the KeyframeSequences
