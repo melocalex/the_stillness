@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
+local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
 local Builder = require(script.Parent.Parent.World.Builder)
 local HouseActivityService = require(script.Parent.HouseActivityService)
 local PlayerService = require(script.Parent.PlayerService)
@@ -23,6 +24,7 @@ local IDLE = "rbxassetid://507766666"
 
 local house: Model? = nil
 local npc: Model? = nil
+local watchOverYou: () -> ()
 local talking: { [Player]: boolean } = {}
 
 local LUNCH = {
@@ -194,6 +196,49 @@ local function onPhase(snap: any)
 	end
 end
 
+-- At night Maya can see your cabin from her window. When something is near
+-- it she goes dark too, tells you once that night, and lights her lamp again
+-- a while after it has gone. (Night 1 is the scripted lesson.)
+function watchOverYou()
+	task.spawn(function()
+		local warnedDay = 0
+		local darkUntil = 0
+		local cabin = Vector3.new(WorldConfig.Cabin.x, WorldConfig.Cabin.floorY, WorldConfig.Cabin.z)
+		while true do
+			task.wait(2)
+			local snap = TimeService.snapshot()
+			local h = house
+			if not h or snap.day <= 1 or snap.phase ~= "Night" then
+				darkUntil = 0
+				continue
+			end
+			local near = false
+			for _, m in CollectionService:GetTagged("Creature") do
+				local state = m:GetAttribute("State")
+				if m:IsA("Model") and state ~= "DORMANT" and state ~= "RETREAT" then
+					near = near or (m:GetPivot().Position - cabin).Magnitude < 60
+				end
+			end
+			if near then
+				if h:GetAttribute("Upstairs") == true or h:GetAttribute("Downstairs") == true then
+					MayaService.setRoom("Upstairs", false)
+					MayaService.setRoom("Downstairs", false)
+				end
+				darkUntil = os.clock() + 90
+				if warnedDay ~= snap.day then
+					warnedDay = snap.day
+					MayaService.radio(
+						"I'm turning my lights off. There's something near your house. Stay still."
+					)
+				end
+			elseif darkUntil > 0 and os.clock() > darkUntil then
+				darkUntil = 0
+				MayaService.setRoom("Upstairs", true)
+			end
+		end
+	end)
+end
+
 function MayaService.start()
 	local h = CollectionService:GetTagged("MayaHouse")[1]
 	if not h or not h:IsA("Model") then
@@ -202,6 +247,7 @@ function MayaService.start()
 	end
 	house = h
 	TimeService.onPhaseChanged(onPhase)
+	watchOverYou()
 	-- Building the rig loads catalog assets and yields: keep server start fast.
 	task.spawn(function()
 		npc = buildNpc(h)

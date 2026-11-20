@@ -86,6 +86,10 @@ export type Creature = {
 	noiseAt: number,
 	echoAt: number?,
 	echoCue: string?,
+	hops: number, -- window-to-window moves this visit
+	tapPending: boolean,
+	returnWindow: Instance?, -- a false departure: it will come back here
+	returnAt: number,
 }
 
 local rng = Random.new(31)
@@ -226,6 +230,10 @@ function Creature.new(
 		noiseAt = rng:NextNumber(10, 40),
 		echoAt = nil,
 		echoCue = nil,
+		hops = 0,
+		tapPending = false,
+		returnWindow = nil,
+		returnAt = 0,
 	}
 	rig.model:SetAttribute("Temperament", temperament)
 	return c
@@ -898,6 +906,39 @@ local function mutter(c: Creature, pos: Vector3)
 	end
 end
 
+-- The window encounter: shut out at one window, it is soon at another of
+-- the same house, tapping. It walks there, or (unseen, never inside, never
+-- on top of anyone) is simply there.
+local function otherWindow(w: Instance): Instance?
+	local shelter = w:GetAttribute("Shelter")
+	if type(shelter) ~= "string" then
+		return nil
+	end
+	local options = {}
+	for _, e in ShelterService.entries(shelter) do
+		if e ~= w and e:GetAttribute("EntryKind") == "window" and e:FindFirstChild("WatchPoint") then
+			table.insert(options, e)
+		end
+	end
+	return if #options > 0 then options[rng:NextInteger(1, #options)] else nil
+end
+
+local function goToWindow(c: Creature, w: Instance)
+	c.window = w
+	c.windowStare = 0
+	c.windowLimit = rng:NextNumber(15, 30)
+	c.lastSeenThroughWindow = now()
+	c.tapPending = true
+	local watch = w:FindFirstChild("WatchPoint")
+	if watch and watch:IsA("BasePart") and not visibleToAnyone(Creature.eye(c)) then
+		local g = watch.Position
+		if not ShelterService.shelterAt(g, 1) and not playerWithin(g, 6) and not visibleToAnyone(g) then
+			local glass = w:FindFirstChild("Glass")
+			stand(c, groundAt(g), if glass and glass:IsA("BasePart") then glass.Position else g)
+		end
+	end
+end
+
 -- Returns the player this creature caught, if any.
 function Creature.tick(c: Creature, dt: number): Player?
 	if not c.alive or c.climbing then
@@ -1009,6 +1050,7 @@ function Creature.tick(c: Creature, dt: number): Player?
 				c.window = if head then windowBetween(Creature.eye(c), head.Position) else nil
 				c.windowStare = 0
 				c.windowLimit = rng:NextNumber(25, 50)
+				c.hops = 0
 			end
 		end
 		local w = c.window
@@ -1016,24 +1058,56 @@ function Creature.tick(c: Creature, dt: number): Player?
 			local watch = w:FindFirstChild("WatchPoint")
 			local glass = w:FindFirstChild("Glass")
 			if watch and watch:IsA("BasePart") and glass and glass:IsA("BasePart") then
-				local lost = now() - c.lastSeenThroughWindow > 9
+				-- Curtains or shutters shut it out quickly; otherwise it waits.
+				local shut = w:GetAttribute("CurtainsClosed") == true or w:GetAttribute("Shuttered") == true
+				local lost = now() - c.lastSeenThroughWindow > (if shut then 3 else 9)
 				if lost or c.windowStare > c.windowLimit then
 					c.window = nil
 					c.windowCooldown = now() + rng:NextNumber(40, 90)
 					CreatureBrain.forget(c.brain)
 					c.brain.state = "PATROL"
+					-- Not finished with this house: another window, or it leaves
+					-- and comes back later without a sound.
+					if lost and unnatural(c) then
+						local other = if c.hops < 2 then otherWindow(w) else nil
+						if other and rng:NextNumber() < 0.35 + 0.4 * c.energy then
+							c.hops += 1
+							goToWindow(c, other)
+						elseif c.temperament == "Deceiver" or c.energy > 0.5 then
+							c.returnWindow = w
+							c.returnAt = now() + rng:NextNumber(20, 40)
+						end
+					end
 				elseif flat(watch.Position - pos).Magnitude > 3 then
 					moveTo(c, watch.Position, "slow")
 					return nil
 				else
 					stop(c)
 					face(c, glass.Position)
+					if c.tapPending then
+						c.tapPending = false
+						noise("windowRattle", glass.Position, 0.45)
+						c.echoAt = now() + rng:NextNumber(3, 6)
+						c.echoCue = "windowRattle"
+					end
 					c.windowStare += dt
 					c.model:SetAttribute("Staring", true)
 					return nil
 				end
 			else
 				c.window = nil
+			end
+		end
+		-- The false departure ends: it comes back to the window it left.
+		local back = c.returnWindow
+		if back and not c.window and now() >= c.returnAt then
+			c.returnWindow = nil
+			if unnatural(c) and back.Parent then
+				c.hops = 0
+				c.window = back
+				c.windowStare = 0
+				c.windowLimit = rng:NextNumber(15, 30)
+				c.lastSeenThroughWindow = now()
 			end
 		end
 		c.model:SetAttribute("Staring", false)
