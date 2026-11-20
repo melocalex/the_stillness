@@ -21,7 +21,9 @@ in Studio.
 
 - World generation on server start (6.7 s, 2 km map), terrain, lake, snowy
   mountain backdrop, asset trees (12 ponderosa, 6 birch, 1 cedar, 1 oak, snow
-  pines), neighbor houses, radio tower.
+  pines), neighbor houses, radio tower. This was the pre-rebuild world: the
+  valley terrain, forest and haze that replaced it have not been seen in
+  Studio yet (see below).
 - The old main menu over a live camera shot of the cabin, Play, spawn.
 - Cabin exterior: porch, posts, porch light, flower boxes, firewood, chimney.
 - Objective tracker advancing through the old opening (find shelter,
@@ -77,6 +79,16 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
   director event is nonviolent and has a cooldown; and a pure-logic replay
   of the 36.12 rainy night (onset climb, local disturbance, regional calm,
   the phrase repeating and coming through whole, the needle settling).
+- 18 terrain specs over the valley height function (Heightfield): flat
+  building pads at the gameplay heights, the lake (depth, water only in the
+  lake, irregular shore), every building and landmark on dry land, zones,
+  creature spawn and patrol points (Watcher and opening points on land,
+  fewer random points in the lake than before), the cabin window's view of
+  Maya's house, the hill house and the Old One's spots, dry and walkable
+  paths (the path to Maya under 0.35 grade), and the valley shape (uneven
+  horizon under 21°, no snow or ramp inside the play area, no visible
+  terrain edge from the lowlands). The pre-rebuild terrain runs as a
+  control and fails the shape checks.
 - Every server service, client controller and world builder is type-checked
   in strict mode and built by Rojo, but **no service has a behavioural
   test**. That includes MayaService, OpeningService, ToolService, the HUD
@@ -118,6 +130,28 @@ Chapter 38, Caramelo (ac163c4, 638d6d1):
   E; automation could not hold a crouch), seeking you when frightened,
   learning and training. Training lives only for the session; it is not
   saved yet.
+
+Valley rebuild (merged from `feat/terrain-rebuild`, 2026-11-20; details in
+[docs/WORLD.md](docs/WORLD.md)):
+
+- The ring of jagged snow walls is gone. The terrain is a 3.2 km
+  Pacific-Northwest valley from one deterministic height function:
+  lowlands, forested asymmetric ridges with passes, far snowy ranges with
+  low gaps to the south, a lone volcano to the south-east. The playable
+  square is unchanged.
+- Irregular lake with coves, an islet, beaches, mud and pebble shores;
+  muted, less reflective water.
+- New paths: around the lake to Maya's porch, up over Hemlock Pass, out
+  over the west pass, and the Valley Road to the reserved Pinehaven site.
+- Clustered, biome-aware forest with ferns, bushes, logs, rocks and
+  stumps, clear sightlines from the cabin, and a shadowless scenery fringe
+  outside the play area.
+- Cooler atmosphere haze so the far peaks read as distant.
+- Every landmark and gameplay coordinate stays where it was.
+- Not measured yet: world build time, tree count and frame rate in
+  Studio. A Lune simulation of the grove rules gives about 2,100 tree
+  candidates before spacing and exclusions; the server prints the real
+  count (`[Forest]`) and the terrain timing (`[Terrain]`).
 
 Revision 2.0 (commits d248a33 and faf03a6, 2026-11-20):
 
@@ -194,7 +228,10 @@ Older systems:
 - Observer profession (Human Watchers), optional path.
 - Maya visiting or staying over; the Maya rescue system (Chapter 32).
 - Pinehaven town with interiors and loot (partial work parked on branch
-  `wip/helpers-partial`, not merged).
+  `wip/helpers-partial`, not merged). The valley now reserves a flat,
+  tree-free site for it at (360, 440) on the Valley Road.
+- Highland phase: the highland lookout (knoll reserved at (-470, -560)),
+  the trail up the Old One's Crest, deep-forest content.
 - Skippable opening cinematic.
 - Richer, layered soundtrack (the owner wants more than one music-box voice).
 - Window wetness, indoor puddles, rain streaks on glass.
@@ -206,6 +243,11 @@ Older systems:
   drive Studio on a locked screen.
 - **Pushing to GitHub** (`melocalex/the_stillness`): blocked for the
   automated session; the owner pushes.
+- **Studio check of the valley rebuild**: computer-use access to Roblox
+  Studio was declined on 2026-11-20, so the new terrain has no Studio
+  screenshots or build time yet. The camera rig is
+  `tools/studio/shot-rig/build.sh` (base commit for "before": ba2d2a0);
+  the checklist is in docs/TESTING.md (Environment, Before/after shots).
 - **Dog animations in a published game**: the account owner must publish
   the Dog KeyframeSequences as Animation assets.
 - **Publishing**: File > Publish to Roblox As, from the owner's account.
@@ -229,6 +271,10 @@ Older systems:
   on P.
 - No licensed glass-shatter or bark sound verified in Studio yet.
 - The daylight brightness tweak was lost to `wip/helpers-partial`.
+- Random creature points (crawlers, patrols, Watchers rolled at 100 to 120
+  studs) can still land in the lake, as before the rebuild but fewer.
+- The playable boundary is still a square of invisible walls; it now
+  stands in low ground behind the ridges.
 
 ## Studio checklist for the opening
 

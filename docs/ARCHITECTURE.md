@@ -19,12 +19,15 @@ Config (pure data)  ->  Logic (pure functions, Lune-tested)
 - `src/shared/Config`: tunables. `GameConfig` (time, player, weather,
   nights, collective, breach, comfort, gather, build, dog, lake-house
   script), `CreatureConfig` (archetypes: senses, brain, speeds, flags),
-  `ItemConfig`, `StoryConfig`, `WorldConfig` (layout), `AudioConfig`.
+  `ItemConfig`, `StoryConfig`, `WorldConfig` (layout, terrain forms, lake,
+  paths, regions, sightlines, forest, atmosphere), `AudioConfig`.
 - `src/shared/Logic`: `TimeCycle`, `Perception`, `CreatureBrain`, `Shelter`,
   `Noise`, `CollectiveMind`, `Inventory`, `NightClass`, `Comfort`,
   `LightVisibility`, `MusicState`, `Journal`, `StoryProgress`, `Mystery`,
-  `Breath`, `FearEcology`, `ChaosField`, `Dissonance`. No requires, no
-  Roblox services. `DissonanceConfig` holds the Chapter 36 tunables.
+  `Breath`, `FearEcology`, `ChaosField`, `Dissonance`, `Heightfield` (the
+  valley's deterministic height function, see [WORLD.md](WORLD.md)). No
+  requires, no Roblox services. `DissonanceConfig` holds the Chapter 36
+  tunables.
 - `src/shared/Net.luau`: remote names, creation, per-player token-bucket
   rate limiting.
 
@@ -35,7 +38,7 @@ Started in dependency order by `Main.server.luau` after the world is built
 
 | Module | Role |
 | --- | --- |
-| `World/*` | Terrain (chunked, height-banded `WriteVoxels`), forest (asset trees + collider), cabin, neighbor houses, landmarks, wildlife, asset access |
+| `World/*` | Terrain (heights from `Logic/Heightfield`, chunked, height-banded `WriteVoxels`), forest (seeded groves of asset trees + collider, understory, scenery fringe), cabin, neighbor houses, landmarks, wildlife, asset access |
 | `TimeService` | Authoritative clock; publishes Day, Phase, ClockTime, NightFactor |
 | `WeatherService` | Continuous rain intensity, fog, wind, gusts that force unlatched windows, thunder |
 | `ShelterService` | Registered shelters and entry points; `Secure`, `Reasons`, `Weakest` |
@@ -117,6 +120,10 @@ ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
   always exist for window observation. Revisit with persistent models for
   landmarks when the map grows.
 - Trees are anchored meshes with no collision plus one invisible trunk
-  cylinder each.
+  cylinder each. Scenery trees outside the play area have no collider and
+  cast no shadows.
+- Terrain heights are evaluated once per 4-stud column; chunks outside the
+  play area get a thin band and no rock floor; the writer yields on a time
+  budget.
 - Creatures tick at their archetype rate near players and 1 Hz far away.
 - Wildlife updates at 15 Hz on the server; animals outside view are cheap.

@@ -13,6 +13,10 @@
   light visibility, music state, journal, story progress, mystery,
   breath, fear ecology, the chaotic energy field and the Dissonance rules,
   and the config files they read.
+- Terrain specs in `tests/terrain.spec.luau` for the valley height
+  function: building pads, the lake, creature spawn points, sightlines,
+  the Old One's spots, dry and walkable paths, and the valley shape, with
+  the pre-rebuild terrain as a control (details in [WORLD.md](WORLD.md#tests)).
 - A Rojo build of the place file.
 
 Gameplay inside Roblox cannot run under Lune; it is checked in Studio.
@@ -25,6 +29,12 @@ Mark each item only after seeing it in a Studio playtest.
 - [ ] Character spawns at the forest trail, not inside terrain
 - [ ] Cabin exists, doors and windows render, porch light is on
 - [ ] Terrain has collision everywhere you can walk; boundary walls stop you
+- [ ] No wall of snow or ice around the valley; snowy peaks only far away, hazy
+- [ ] From the cabin's north window: the lake and Maya's house, no tree in the way
+- [ ] The lakeside path leads to Maya's porch; Caramelo follows the whole way
+- [ ] Lake shore shows beach, mud and pebble stretches; water is not flat blue
+- [ ] From Radio Hill and the hill house: ridges, gaps, no edge of the terrain
+- [ ] `[Terrain]`, `[Forest]` and `[World] built in` lines in the server output
 - [ ] Gather prompt appears on marked trees, rocks and bushes; yields items
 - [ ] Neighbor houses, lake house, radio tower and town are visible from afar
 
@@ -82,8 +92,24 @@ rain), then back to 1. Walk to the cabin table, Caramelo on his bed.
 - [ ] `tools/studio/verify_dissonance_audio.luau` prints loaded=true for the
   candidates before any is added to `AudioConfig.Chaoscope`
 
+### Before/after shots
+
+`tools/studio/shot-rig/build.sh <commit> <out.rbxlx>` builds any commit
+with a screenshot rig added. The rig is a tool and never ships in the
+game. In the built place:
+
+- **Clock.** The server fast-forwards to 11:00 and freezes the clock.
+- **Cameras.** After you click Play in the menu, the client hides the
+  HUD and cycles five cameras, 14 s each. The cameras are: the cabin's
+  north yard toward Maya's house, the lake shore, Radio Hill toward the
+  north, the porch toward the south-east and a high aerial view.
+- **Output.** Each camera prints `[Shot] <name>` to the output.
+
+Build two commits, open each in Studio and screenshot the same camera.
+
 ## Performance
 
 Report measured numbers only (Studio **View > Stats / MicroProfiler**).
-Measured so far: server world generation 6.7 s for the 2 km map
-(Studio test, 2026-11-20).
+Measured so far: server world generation 6.7 s for the old 2 km map
+(Studio test, 2026-11-20). The rebuilt 3.2 km valley has not been timed in
+Studio yet.
