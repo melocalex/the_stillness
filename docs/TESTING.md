@@ -11,7 +11,8 @@
   `src/shared/Logic`: time cycle, perception, creature brain, shelter rules,
   noise, collective mind, inventory, night classification, comfort,
   light visibility, music state, journal, story progress, mystery,
-  breath, and the config files they read.
+  breath, fear ecology, the chaotic energy field and the Dissonance rules,
+  and the config files they read.
 - A Rojo build of the place file.
 
 Gameplay inside Roblox cannot run under Lune; it is checked in Studio.
@@ -51,6 +52,33 @@ Mark each item only after seeing it in a Studio playtest.
 
 ### Story
 - [ ] Objectives advance in order and can be completed late without soft-locks
+
+### The Dissonance (Chapter 36)
+Setup: `rojo build -o <scratch>/dissonance.rbxlx`, open it, Play. In Server
+view set ReplicatedStorage `TimeScale` to 200 until day 3 Dusk (scripted
+rain), then back to 1. Walk to the cabin table, Caramelo on his bed.
+- [ ] The H-17 sits on the table beside the radio, facing the stools; the
+  dial, trace and POWER lamp show; a faint hum
+- [ ] R switches it off and on (click); E frames it and shows POWER, mode
+  and sensitivity; Esc leaves
+- [ ] Set ReplicatedStorage `DissonanceForce` to `Arrival` (Server view):
+  the needle climbs over the next half minute; LOCAL reads about 40 with a
+  jagged trace; REGIONAL stays mostly normal
+- [ ] Caramelo lifts his head on his bed at least once during it
+- [ ] "Unknown: ..." appears on the radio card with letters missing, then
+  whole after raising sensitivity in LOCAL; the EMIT lamp warms, blinks,
+  flashes; workspace `ChaosSignal` goes above 0 and back to 0
+- [ ] At most one short flicker of the cabin lights
+- [ ] Switching the scope off after the peak sometimes gives a click and a
+  needle swing while it is off, then it settles
+- [ ] Rain, fire and music fade out for a few seconds and come back; the dog
+  settles
+- [ ] No creature appears because of any of this; no damage, no breach
+- [ ] `Echo` and `Absence` seeds: the Echo plays recent house sounds from the
+  scope, out of time; the Absence drops the needle to 0 (FAULT lamp) and
+  then the house goes quiet
+- [ ] `tools/studio/verify_dissonance_audio.luau` prints loaded=true for the
+  candidates before any is added to `AudioConfig.Chaoscope`
 
 ## Performance
 

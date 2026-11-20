@@ -23,7 +23,8 @@ Config (pure data)  ->  Logic (pure functions, Lune-tested)
 - `src/shared/Logic`: `TimeCycle`, `Perception`, `CreatureBrain`, `Shelter`,
   `Noise`, `CollectiveMind`, `Inventory`, `NightClass`, `Comfort`,
   `LightVisibility`, `MusicState`, `Journal`, `StoryProgress`, `Mystery`,
-  `Breath`. No requires, no Roblox services.
+  `Breath`, `FearEcology`, `ChaosField`, `Dissonance`. No requires, no
+  Roblox services. `DissonanceConfig` holds the Chapter 36 tunables.
 - `src/shared/Net.luau`: remote names, creation, per-player token-bucket
   rate limiting.
 
@@ -53,13 +54,16 @@ Started in dependency order by `Main.server.luau` after the world is built
 | `DogService` | Caramelo: follow, commands, alert, hide, pet |
 | `HouseActivityService`, `OldOneService`, `ObservationService` | Distant house routines, the Old One, window observation and journal |
 | `BuildService` | Grid placement validated on the server |
+| `ChaoticEnergyService`, `World/Chaoscope` | Chapter 36: the chaotic energy field (1 Hz, real time), anomalies, the H-17 Chaoscope on the cabin table and its validated `Chaoscope` remote |
+| `DissonanceEventDirector` | Answers anomaly beats with nonvisual events through LightService, MayaService, DogService.sense and ObservationService.note |
 
 ## Client
 
 `Main.client.luau` starts: `LightingController`, `WeatherController`,
 `AudioController` (ambience mixer + MusicDirector), `Prompts` (custom
 ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
-`ObservationController`, `BuildController`, `DogAnimator`, then `Menu`.
+`ObservationController`, `BuildController`, `DogAnimator`,
+`CreatureAnimator`, `ChaoscopeController`, then `Menu`.
 
 ## Contracts between world builders and services
 
@@ -79,8 +83,28 @@ ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
 - Prompt names: `DoorPrompt`, `UpgradePrompt`, `CurtainPrompt`, `LatchPrompt`,
   `ObservePrompt`, `SwitchPrompt`, `SwitchPrompt2`, `LampPrompt`,
   `PowerPrompt`, `FirePrompt`, `CookPrompt`, `SleepPrompt`, `RadioPrompt`,
-  `WardrobePrompt`, `PetPrompt`, `MayaPrompt`; all prompts use
-  `ProximityPromptStyle.Custom`.
+  `WardrobePrompt`, `PetPrompt`, `MayaPrompt`, `ScopePrompt`,
+  `ScopePowerPrompt`; all prompts use `ProximityPromptStyle.Custom`.
+
+## The Dissonance (Chapter 36)
+
+- Tag `Chaoscope` on the H-17 model; parts `Case`, `Face`, `Dial`, `Screen`,
+  `LampPower`, `LampSignal`, `LampEmit`, `LampFault`, `Knob`, `Switch`.
+- Scope attributes (server-written, the only Dissonance data a client sees):
+  `Powered`, `Mode` (`PASSIVE`, `LOCAL`, `REGIONAL`), `Sensitivity` (1-5),
+  `Needle` (displayed CEU, noisy), `Jitter`, `Wave`, `Level`, `Emit`.
+  True energy, anomaly families and stages and hidden positions never leave
+  the server.
+- Creature hook: workspace `ChaosSignal` (0-1), `ChaosSignalPosition`,
+  `ChaosSignalAt` after each scan pulse.
+- ReplicatedStorage `Hush` (0-1) pauses ambience, fire and music on the
+  client (the `Hushable` SoundGroup). `DissonanceForce` (Studio only) seeds
+  an anomaly at the house.
+- Dog `Pose` adds `rouse` (lying, head up). `DogService.sense(kind, lookAt,
+  seconds, near, radius)` sets a timed override that `tickDog` consumes.
+- Remotes: `Chaoscope` (client to server, rate 4/s, within 12 studs) and
+  `Dissonance` (server to client; `echo` replays the client's own recent
+  in-game cues).
 
 ## Performance choices
 
