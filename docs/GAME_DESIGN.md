@@ -90,6 +90,16 @@ frightening only because it is rare.
   displace 10-22 studs toward what it wants. It never lands in a shelter or
   within 20 studs of a player, and it never catches anyone mid-dash. It
   walks slowly and pauses to watch lit houses.
+- **The window encounter.** Shut out of one window (curtains, shutters, or
+  it simply loses sight), a Watcher may soon be at another window of the
+  same house, tapping, and the tap comes again a few seconds later. At most
+  two hops per visit; it walks, or appears only where nobody can see it,
+  outside the walls.
+- **The false departure.** A Deceiver, or any well-fed Watcher, walks away
+  and returns silently to the window it left, once.
+- **Maya sees it too.** From night 2, when something is near your cabin at
+  night, her lamps go out across the lake; she radios once and lights her
+  lamp again after it has gone.
 - **Crawler and Dweller** move in bursts with dead stops, jumpier but slower
   on average.
 - **Noises are behaviour.** Distant calls, close breathing, and at a wall a
