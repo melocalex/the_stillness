@@ -370,20 +370,21 @@ local function buildDoor(parent: Instance, origin: CFrame): Model
 		material = Enum.Material.WoodPlanks,
 		parent = m,
 	})
+	-- The home is complete at the start (Revision 2.0): the door is hung and
+	-- shut. The broken-door prop stays hidden for later storm damage.
 	broken:SetAttribute("Decor", true)
+	broken.Transparency = 1
+	broken.CanCollide = false
 	m.PrimaryPart = panel
-	setEntry(m, "door", "Door", 0, 100, false)
-	m:SetAttribute("Tier", "weak")
+	setEntry(m, "door", "Door", 100, 100, true)
+	m:SetAttribute("Tier", "standard")
 	CollectionService:AddTag(m, "Door")
-	local prompt = Builder.prompt(panel, "Repair door (5 Wood)", "Door", 0.8, 10)
+	local prompt = Builder.prompt(panel, "Open door", "Door", 0, 10)
 	prompt.Name = "DoorPrompt"
 	local upgrade = Builder.prompt(panel, "Reinforce (4 Wood, 3 Stone, 2 Scrap)", "Door", 1.5, 10)
 	upgrade.Name = "UpgradePrompt"
 	upgrade.KeyboardKeyCode = Enum.KeyCode.R
 	upgrade.UIOffset = Vector2.new(0, 70)
-	upgrade.Enabled = false
-	panel.Transparency = 1
-	panel.CanCollide = false
 	return m
 end
 
@@ -589,14 +590,15 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	-- Exterior walls
 	local wz, wx = HZ + 0.5, HX + 0.5
 	wall(structure, origin, "x", wz, -(HX + 1), HX + 1, { { 4, 5, 0, 8.5 }, { -10, 5, 3.5, 8 } })
-	wall(structure, origin, "x", -wz, -(HX + 1), HX + 1, { { -4, 11, 3, 8.5 } })
+	wall(structure, origin, "x", -wz, -(HX + 1), HX + 1, { { -4, 11, 3, 8.5 }, { 13, 4, 3.5, 8 } })
 	wall(structure, origin, "z", wx, -HZ, HZ, { { -6, 5, 3.5, 8 } })
 	wall(structure, origin, "z", -wx, -HZ, HZ, {})
 	trim(structure, origin, "x", wz + 0.55, -(HX + 1), -12.6)
 	trim(structure, origin, "x", wz + 0.55, -7.4, 1.4)
 	trim(structure, origin, "x", wz + 0.55, 6.6, HX + 1)
 	trim(structure, origin, "x", -wz - 0.55, -(HX + 1), -9.6)
-	trim(structure, origin, "x", -wz - 0.55, 1.6, HX + 1)
+	trim(structure, origin, "x", -wz - 0.55, 1.6, 10.6)
+	trim(structure, origin, "x", -wz - 0.55, 15.4, HX + 1)
 	trim(structure, origin, "z", -wx - 0.55, -HZ, -3)
 	trim(structure, origin, "z", -wx - 0.55, 3, HZ)
 	trim(structure, origin, "z", wx + 0.55, -HZ, -8.6)
@@ -756,23 +758,24 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	fx.Size = 3.5
 	fx.Color = Color3.fromRGB(255, 140, 60)
 	fx.SecondaryColor = Color3.fromRGB(255, 70, 20)
-	fx.Enabled = false
+	-- The morning fire is still going, but low: feeding it is the first chore.
+	fx.Enabled = true
 	fx.Parent = flame
 	local smoke = Instance.new("Smoke")
 	smoke.Color = Color3.fromRGB(70, 66, 64)
 	smoke.Opacity = 0.12
 	smoke.RiseVelocity = 4
 	smoke.Size = 3
-	smoke.Enabled = false
+	smoke.Enabled = true
 	smoke.Parent = fire:FindFirstChild("Chimney") :: Instance
 	local fireLight = Builder.pointLight(flame, Color3.fromRGB(255, 140, 70), 24, 2.2, true)
-	fireLight.Enabled = false
-	flame:SetAttribute("On", false)
+	fireLight.Enabled = true
+	flame:SetAttribute("On", true)
 	flame:SetAttribute("Electric", false)
 	flame:SetAttribute("Indoor", true)
 	flame:SetAttribute("Shelter", "Cabin")
 	flame:SetAttribute("Brightness", 1.4)
-	flame:SetAttribute("Fuel", 0)
+	flame:SetAttribute("Fuel", 150) -- seconds of burn left at the start
 	CollectionService:AddTag(flame, "StillnessLight")
 	CollectionService:AddTag(flame, "Fireplace")
 	local firePrompt = Builder.prompt(firebox, "Light fire (2 Wood)", "Fireplace", 0.6, 9)
@@ -806,9 +809,22 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 		Vector3.new(1, 0, 0),
 		5,
 		4.5,
-		40,
-		false,
-		true
+		100,
+		true,
+		false
+	)
+	-- Bedroom window facing the lake: Maya's lights are visible from the bed.
+	buildWindow(
+		entries,
+		origin,
+		"BedroomNorth",
+		Vector3.new(13, 5.75, -wz),
+		Vector3.new(0, 0, -1),
+		4,
+		4,
+		100,
+		true,
+		false
 	)
 	buildWindow(
 		entries,

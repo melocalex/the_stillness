@@ -52,39 +52,21 @@ local function pane(parent: Instance, name: string, cf: CFrame, w: number, h: nu
 	return p
 end
 
-local function figure(parent: Instance, name: string, cf: CFrame, height: number): Model
-	local m = Builder.model(name, parent)
-	local body = Builder.part({
-		name = "Body",
-		size = Vector3.new(1.6, height * 0.62, 0.8),
-		cframe = cf * CFrame.new(0, height * 0.31, 0),
-		color = Color3.fromRGB(8, 8, 10),
-		material = Enum.Material.SmoothPlastic,
+-- Invisible marker MayaService walks between. Spot names are the contract.
+local function spot(parent: Instance, name: string, cf: CFrame)
+	local p = Builder.part({
+		name = "MayaSpot",
+		size = Vector3.new(1, 1, 1),
+		cframe = cf,
+		transparency = 1,
 		canCollide = false,
 		canQuery = false,
-		castShadow = false,
-		parent = m,
+		parent = parent,
 	})
-	Builder.part({
-		name = "Head",
-		shape = Enum.PartType.Ball,
-		size = Vector3.new(1.1, 1.3, 1.1),
-		cframe = cf * CFrame.new(0, height * 0.7, 0),
-		color = Color3.fromRGB(8, 8, 10),
-		canCollide = false,
-		canQuery = false,
-		castShadow = false,
-		parent = m,
-	})
-	m.PrimaryPart = body
-	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.Transparency = 1
-		end
-	end
-	return m
+	p:SetAttribute("Spot", name)
 end
 
+-- Maya's house (Revision 2.0): she lives here, across the lake from you.
 function Landmarks.lakeHouse(parent: Instance): Model
 	local m = Builder.model("LakeHouse", parent)
 	local y = W.LakeHouse.height
@@ -194,21 +176,32 @@ function Landmarks.lakeHouse(parent: Instance): Model
 		l.Enabled = false
 		bulb:SetAttribute("Room", room.name)
 	end
-	-- Silhouettes that the house activity director moves.
-	local fig = figure(m, "Figure", o * CFrame.new(-7, fh, dp / 2 - 2), 6.2)
-	fig:SetAttribute("Home", fig:GetPivot())
-	-- Interior clue upstairs
-	local desk = box(
+	-- Upstairs desk and a kitchen table for lunch.
+	box(m, "Desk", o * CFrame.new(6, fh + 1.6, -5), Vector3.new(4, 2.6, 2), SIDING_DARK, Enum.Material.Wood)
+	box(
 		m,
-		"Desk",
-		o * CFrame.new(6, fh + 1.6, -5),
-		Vector3.new(4, 2.6, 2),
-		SIDING_DARK,
+		"Table",
+		o * CFrame.new(4, 1.5, -2),
+		Vector3.new(5, 0.4, 3),
+		Color3.fromRGB(120, 86, 58),
 		Enum.Material.Wood
 	)
-	local cluePrompt = Builder.prompt(desk, "Read the journal", "Desk", 0.8, 8)
-	cluePrompt.Name = "CluePrompt"
-	-- Trigger volume for "investigated"
+	for _, dx in { 2, 6 } do
+		box(
+			m,
+			"TableLeg",
+			o * CFrame.new(dx, 0.65, -2),
+			Vector3.new(0.4, 1.3, 2.4),
+			SIDING_DARK,
+			Enum.Material.Wood
+		)
+	end
+	-- Where Maya stands through her day. Front faces the cabin (+z).
+	spot(m, "Kitchen", o * CFrame.new(4, 0, -4.5) * CFrame.Angles(0, math.pi, 0))
+	spot(m, "Window", o * CFrame.new(-5, 0, dp / 2 - 2))
+	spot(m, "Porch", o * CFrame.new(wd / 2 + 4, 0, 0.5) * CFrame.Angles(0, -math.pi / 2, 0))
+	spot(m, "Upstairs", o * CFrame.new(5, fh + 0.3, dp / 2 - 2))
+	-- Interior volume
 	local vol = Builder.part({
 		name = "Interior",
 		size = Vector3.new(wd - 1, 2 * fh, dp - 1),
@@ -223,7 +216,7 @@ function Landmarks.lakeHouse(parent: Instance): Model
 	m:SetAttribute("Upstairs", false)
 	m:SetAttribute("Downstairs", false)
 	m:SetAttribute("Broken", false)
-	CollectionService:AddTag(m, "WatchedHouse")
+	CollectionService:AddTag(m, "MayaHouse")
 	return m
 end
 

@@ -51,7 +51,8 @@ function World.build(): Built
 		end
 	end)
 	Wildlife.start(root)
-	local spawnPos = Vector3.new(W.Spawn.x, Terrain.heightAt(W.Spawn.x, W.Spawn.z) + 4, W.Spawn.z)
+	-- You wake inside the cabin, by the bed (Revision 2.0 opening).
+	local spawnPos = Vector3.new(W.Cabin.x + 10.5, W.Cabin.floorY + 1, W.Cabin.z - 2)
 	print(string.format("[World] built in %.2fs", os.clock() - started))
 	return {
 		root = root,

@@ -66,6 +66,9 @@ local function spawnCrawler()
 end
 
 local function startNight(day: number)
+	if day == 1 then
+		return -- Night 1 is the guided first Watcher (OpeningService).
+	end
 	local t = nightTypeFor(day)
 	local profile = GameConfig.NightProfiles[t]
 	local nightLen = GameConfig.Time.Durations.Night

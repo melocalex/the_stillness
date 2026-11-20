@@ -45,9 +45,11 @@ GameConfig.Weather = {
 	-- Scripted weather per day for the story; later days roll from Weights.
 	-- Each entry is { phase, weather }.
 	Scripted = {
-		[1] = { Day = "Clear", Dusk = "Fog", Night = "Rain", Dawn = "Fog" },
+		-- Night 1 starts clear so the Watcher can be seen; the opening forces
+		-- calm rain once it leaves.
+		[1] = { Day = "Clear", Dusk = "Clear", Night = "Clear", Dawn = "Fog" },
 		[2] = { Day = "Clear", Dusk = "Clear", Night = "Fog", Dawn = "Fog" },
-		[3] = { Day = "Fog", Dusk = "Rain", Night = "Storm", Dawn = "Rain" },
+		[3] = { Day = "Fog", Dusk = "Rain", Night = "Rain", Dawn = "Rain" },
 	} :: { [number]: { [string]: string } },
 	Weights = { Clear = 50, Fog = 25, Rain = 18, Storm = 7 },
 	-- How far creatures and players can see, as a fraction of clear weather.
@@ -55,10 +57,13 @@ GameConfig.Weather = {
 	ThunderMinGap = 25,
 }
 
+-- Design rule (Revision 2.0): most nights are safe and cozy. Night 1 is the
+-- guided first-Watcher lesson; nights 2-3 stay gentle; Black Nights are
+-- story-level and never early.
 GameConfig.Nights = {
-	scripted = { [1] = "Peaceful", [2] = "Uneasy", [3] = "Bad" },
-	weights = { Peaceful = 45, Uneasy = 30, Bad = 20, Black = 5 },
-	blackMinDay = 6,
+	scripted = { [1] = "Peaceful", [2] = "Peaceful", [3] = "Uneasy" },
+	weights = { Peaceful = 65, Uneasy = 25, Bad = 9, Black = 1 },
+	blackMinDay = 14,
 }
 
 -- How many creatures each night type allows, and when warnings start.

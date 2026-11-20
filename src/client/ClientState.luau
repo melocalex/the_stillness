@@ -11,6 +11,7 @@ local ClientState = {
 	lastDiscovery = -1e9,
 	lastThreatTime = -1e9,
 	listeners = {} :: { () -> () },
+	settings = { music = 1, ambience = 1, cues = 1, subtitles = true },
 }
 
 function ClientState.onInventory(fn: () -> ())

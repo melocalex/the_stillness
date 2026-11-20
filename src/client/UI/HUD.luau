@@ -1,7 +1,12 @@
 --!strict
--- The restrained HUD: clock and day, the current objective, a few quiet
--- status lines that fade when nothing changes, toasts, the note reader, the
--- radio subtitle, the capture fade and the end card.
+-- The restrained HUD.
+--   top center   time pill (day, clock, phase, weather) and toasts under it
+--   top right    objective card (slides in on change, shows completions)
+--   bottom left  vitals: comfort, exposure, and stamina/breath only when used;
+--                chips for "home, secure" and "coat on"
+--   lower middle radio transcript card with the speaker's name
+-- Everything sits below Roblox's top bar and away from interaction prompts.
+-- Also: note reader, capture fade and end card.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,164 +22,307 @@ local HUD = {}
 
 local C = Theme.Colors
 local player = Players.LocalPlayer
+local TOP = 58 -- clear of Roblox's top bar
 
-local PHASE_TEXT: { [string]: string } = { Day = "Day", Dusk = "Dusk", Night = "Night", Dawn = "Dawn" }
+local WEATHER_TEXT: { [string]: string } = {
+	Clear = "Clear",
+	Fog = "Fog",
+	Rain = "Rain",
+	Storm = "Storm",
+}
+
+local function chip(parent: Instance, text: string, color: Color3): TextLabel
+	return Theme.create("TextLabel", {
+		Parent = parent,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 20),
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.82,
+		Text = "  " .. text .. "  ",
+		TextSize = 11,
+		FontFace = Theme.FontBold,
+		TextColor3 = color,
+		Visible = false,
+	}, { Theme.corner(10) }) :: TextLabel
+end
+
+local function twelveHour(clock: number): string
+	local h = math.floor(clock) % 24
+	local m = math.floor((clock - math.floor(clock)) * 60)
+	local suffix = if h < 12 then "AM" else "PM"
+	local h12 = h % 12
+	if h12 == 0 then
+		h12 = 12
+	end
+	return string.format("%d:%02d %s", h12, m, suffix)
+end
 
 function HUD.start()
 	local gui = Theme.screen("HudGui", 10)
 
-	-- Clock (top-left)
-	local clock = Theme.create("TextLabel", {
+	-- Time pill (top center)
+	local pill = Theme.create("Frame", {
 		Parent = gui,
-		Position = UDim2.fromOffset(20, 16),
-		Size = UDim2.fromOffset(320, 26),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, TOP - 44),
+		Size = UDim2.fromOffset(0, 34),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = C.Panel,
+		BackgroundTransparency = 0.3,
+	}, {
+		Theme.corner(17),
+		Theme.stroke(C.Line, 1, 0.5),
+		Theme.create("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }),
+		Theme.create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 10),
+		}),
+	})
+	local dayLabel = Theme.create("TextLabel", {
+		Parent = pill,
+		LayoutOrder = 1,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 34),
 		BackgroundTransparency = 1,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 18,
+		TextSize = 12,
+		FontFace = Theme.FontBold,
+		TextColor3 = C.Amber,
+		Text = "DAY 1",
+	})
+	local timeLabel = Theme.create("TextLabel", {
+		Parent = pill,
+		LayoutOrder = 2,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 34),
+		BackgroundTransparency = 1,
+		TextSize = 16,
 		FontFace = Theme.FontSerif,
 		TextColor3 = C.Text,
 		Text = "",
 	})
-	local nightLine = Theme.create("TextLabel", {
-		Parent = gui,
-		Position = UDim2.fromOffset(20, 42),
-		Size = UDim2.fromOffset(420, 20),
+	local weatherLabel = Theme.create("TextLabel", {
+		Parent = pill,
+		LayoutOrder = 3,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 34),
 		BackgroundTransparency = 1,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 13,
-		FontFace = Theme.Font,
+		TextSize = 12,
+		FontFace = Theme.FontMedium,
 		TextColor3 = C.Muted,
 		Text = "",
 	})
 
-	-- Objective (top-right)
-	local objective = Theme.create("Frame", {
-		Parent = gui,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -20, 0, 16),
-		Size = UDim2.fromOffset(340, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = C.Panel,
-		BackgroundTransparency = 0.35,
-		Visible = false,
-	}, { Theme.corner(8), Theme.padding(10), Theme.create("UIListLayout", { Padding = UDim.new(0, 4) }) })
-	local objTitle = Theme.label("", 15, Theme.FontMedium, C.Amber)
-	objTitle.Parent = objective
-	local objHint = Theme.label("", 13, Theme.Font, C.Muted)
-	objHint.Parent = objective
-
-	-- Status (bottom-left): fades out when unchanged.
-	local status = Theme.create("Frame", {
-		Parent = gui,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 20, 1, -20),
-		Size = UDim2.fromOffset(260, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-	}, {
-		Theme.create(
-			"UIListLayout",
-			{ Padding = UDim.new(0, 4), VerticalAlignment = Enum.VerticalAlignment.Bottom }
-		),
-	})
-	local function bar(name: string, color: Color3): (Frame, Frame, TextLabel)
-		local row = Theme.create(
-			"Frame",
-			{ Name = name, Parent = status, Size = UDim2.fromOffset(260, 18), BackgroundTransparency = 1 }
-		)
-		local lbl = Theme.create("TextLabel", {
-			Parent = row,
-			Size = UDim2.fromOffset(90, 18),
-			BackgroundTransparency = 1,
-			Text = name,
-			TextSize = 13,
-			FontFace = Theme.Font,
-			TextColor3 = C.Muted,
-			TextXAlignment = Enum.TextXAlignment.Left,
-		})
-		local track = Theme.create("Frame", {
-			Parent = row,
-			Position = UDim2.fromOffset(92, 7),
-			Size = UDim2.fromOffset(160, 4),
-			BackgroundColor3 = C.PanelLight,
-			BorderSizePixel = 0,
-		}, { Theme.corner(2) })
-		local fill = Theme.create("Frame", {
-			Parent = track,
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-		}, { Theme.corner(2) })
-		return row, fill, lbl
-	end
-	local comfortRow, comfortFill, comfortLbl = bar("Comfort", C.Amber)
-	local exposureRow, exposureFill = bar("Exposure", C.Cold)
-	local staminaRow, staminaFill = bar("Stamina", C.Good)
-	local breathRow, breathFill, breathLbl = bar("Breath", C.Text)
-	local coatLine = Theme.create("TextLabel", {
-		Parent = status,
-		Size = UDim2.fromOffset(260, 18),
-		BackgroundTransparency = 1,
-		TextSize = 13,
-		FontFace = Theme.Font,
-		TextColor3 = C.Amber,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "",
-	})
-
-	-- Toasts (bottom-center)
+	-- Toasts (under the pill, stacking down)
 	local toasts = Theme.create("Frame", {
 		Parent = gui,
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -90),
-		Size = UDim2.fromOffset(520, 0),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, TOP + 2),
+		Size = UDim2.fromOffset(560, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, {
 		Theme.create("UIListLayout", {
 			Padding = UDim.new(0, 6),
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Bottom,
+			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 	})
 	local KIND_COLOR: { [string]: Color3 } =
-		{ good = C.Good, warning = C.Amber, danger = C.Danger, info = C.Text }
+		{ good = C.Good, warning = C.Amber, danger = C.Danger, info = C.Text, pickup = C.Amber }
+	local toastCount = 0
 	local function toast(text: string, kind: string?)
+		toastCount += 1
+		local color = KIND_COLOR[kind or "info"] or C.Text
 		local t = Theme.create("TextLabel", {
 			Parent = toasts,
-			Size = UDim2.fromOffset(0, 30),
+			LayoutOrder = toastCount,
+			Size = UDim2.fromOffset(0, 28),
 			AutomaticSize = Enum.AutomaticSize.X,
 			BackgroundColor3 = C.Panel,
-			BackgroundTransparency = 0.25,
-			Text = "  " .. text .. "  ",
-			TextSize = 15,
+			BackgroundTransparency = 1,
+			Text = "   " .. text .. "   ",
+			TextSize = 14,
 			FontFace = Theme.FontMedium,
-			TextColor3 = KIND_COLOR[kind or "info"] or C.Text,
-		}, { Theme.corner(6) })
-		task.delay(5, function()
-			TweenService:Create(t, TweenInfo.new(1), { TextTransparency = 1, BackgroundTransparency = 1 })
-				:Play()
-			task.wait(1)
-			t:Destroy()
+			TextColor3 = color,
+			TextTransparency = 1,
+		}, { Theme.corner(14), Theme.stroke(color, 1, 1) })
+		local stroke = t:FindFirstChildOfClass("UIStroke")
+		TweenService:Create(t, TweenInfo.new(0.25), { TextTransparency = 0, BackgroundTransparency = 0.25 })
+			:Play()
+		if stroke then
+			TweenService:Create(stroke, TweenInfo.new(0.25), { Transparency = 0.7 }):Play()
+		end
+		-- Keep at most four on screen.
+		local visible = {}
+		for _, child in toasts:GetChildren() do
+			if child:IsA("TextLabel") then
+				table.insert(visible, child)
+			end
+		end
+		if #visible > 4 then
+			table.sort(visible, function(a, b)
+				return a.LayoutOrder < b.LayoutOrder
+			end)
+			visible[1]:Destroy()
+		end
+		task.delay(4.5, function()
+			if t.Parent then
+				TweenService
+					:Create(t, TweenInfo.new(0.8), { TextTransparency = 1, BackgroundTransparency = 1 })
+					:Play()
+				if stroke then
+					TweenService:Create(stroke, TweenInfo.new(0.8), { Transparency = 1 }):Play()
+				end
+				task.wait(0.85)
+				t:Destroy()
+			end
 		end)
 	end
 	HUD.toast = toast
 
-	-- Radio subtitle
-	local radio = Theme.create("TextLabel", {
+	-- Objective card (top right)
+	local objective = Theme.create("Frame", {
+		Parent = gui,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -18, 0, TOP + 40),
+		Size = UDim2.fromOffset(320, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = C.Panel,
+		BackgroundTransparency = 0.28,
+		Visible = false,
+	}, {
+		Theme.corner(10),
+		Theme.stroke(C.Line, 1, 0.55),
+		Theme.create("UIPadding", {
+			PaddingTop = UDim.new(0, 10),
+			PaddingBottom = UDim.new(0, 12),
+			PaddingLeft = UDim.new(0, 16),
+			PaddingRight = UDim.new(0, 14),
+		}),
+		Theme.create("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	local objKicker = Theme.label("OBJECTIVE", 10, Theme.FontBold, C.Amber)
+	objKicker.LayoutOrder = 1
+	objKicker.Parent = objective
+	local objTitle = Theme.label("", 16, Theme.FontSerif, C.Text)
+	objTitle.LayoutOrder = 2
+	objTitle.Parent = objective
+	local objHint = Theme.label("", 12, Theme.Font, C.Muted)
+	objHint.LayoutOrder = 3
+	objHint.Parent = objective
+
+	-- Vitals (bottom left)
+	local vitals = Theme.create("Frame", {
+		Parent = gui,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 18, 1, -18),
+		Size = UDim2.fromOffset(230, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = C.Panel,
+		BackgroundTransparency = 0.4,
+	}, {
+		Theme.corner(10),
+		Theme.padding(10),
+		Theme.create("UIListLayout", {
+			Padding = UDim.new(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		}),
+	})
+	local chips = Theme.create("Frame", {
+		Parent = vitals,
+		LayoutOrder = 1,
+		Size = UDim2.new(1, 0, 0, 20),
+		BackgroundTransparency = 1,
+	}, {
+		Theme.create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 6),
+		}),
+	})
+	local homeChip = chip(chips, "HOME · SECURE", C.Good)
+	local coatChip = chip(chips, "COAT ON", C.Amber)
+	local nightChip = chip(chips, "", C.Danger)
+
+	local function meter(order: number, name: string, color: Color3): (Frame, Frame, TextLabel)
+		local row = Theme.create("Frame", {
+			Parent = vitals,
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 22),
+			BackgroundTransparency = 1,
+		})
+		local lbl = Theme.create("TextLabel", {
+			Parent = row,
+			Size = UDim2.new(1, 0, 0, 12),
+			BackgroundTransparency = 1,
+			Text = string.upper(name),
+			TextSize = 10,
+			FontFace = Theme.FontBold,
+			TextColor3 = C.Muted,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		})
+		local track = Theme.create("Frame", {
+			Parent = row,
+			Position = UDim2.fromOffset(0, 15),
+			Size = UDim2.new(1, 0, 0, 5),
+			BackgroundColor3 = C.PanelLight,
+			BorderSizePixel = 0,
+		}, { Theme.corner(3) })
+		local fill = Theme.create("Frame", {
+			Parent = track,
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+		}, {
+			Theme.corner(3),
+			Theme.create("UIGradient", {
+				Color = ColorSequence.new(color:Lerp(Color3.new(0, 0, 0), 0.25), color),
+			}),
+		})
+		return row, fill, lbl
+	end
+	local _comfortRow, comfortFill, comfortLbl = meter(2, "Comfort", C.Amber)
+	local _exposureRow, exposureFill, exposureLbl = meter(3, "Exposure", C.Cold)
+	local staminaRow, staminaFill = meter(4, "Stamina", C.Good)
+	local breathRow, breathFill, breathLbl = meter(5, "Breath", C.Text)
+
+	-- Key hints (bottom right), fade after a while
+	local hints = Theme.create("TextLabel", {
+		Parent = gui,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -18, 1, -18),
+		Size = UDim2.fromOffset(420, 18),
+		BackgroundTransparency = 1,
+		Text = "1 Axe   ·   C Crouch   ·   H Hold breath   ·   Q Coat   ·   G Dog   ·   P Pack   ·   J Journal",
+		TextSize = 12,
+		FontFace = Theme.FontMedium,
+		TextColor3 = C.Muted,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextTransparency = 0.2,
+	})
+
+	-- Radio transcript (lower middle, above prompts)
+	local radio = Theme.create("Frame", {
 		Parent = gui,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -150),
-		Size = UDim2.fromOffset(640, 0),
+		Position = UDim2.new(0.5, 0, 1, -170),
+		Size = UDim2.fromOffset(560, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Color3.fromRGB(14, 18, 16),
 		BackgroundTransparency = 1,
-		TextWrapped = true,
-		TextSize = 16,
-		FontFace = Theme.FontNote,
-		TextColor3 = Color3.fromRGB(200, 220, 200),
-		TextStrokeTransparency = 0.5,
-		Text = "",
+		Visible = false,
+	}, {
+		Theme.corner(10),
+		Theme.padding(12),
+		Theme.create("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
+	local radioWho = Theme.label("", 11, Theme.FontBold, Color3.fromRGB(150, 210, 160))
+	radioWho.LayoutOrder = 1
+	radioWho.Parent = radio
+	local radioText = Theme.label("", 16, Theme.FontNote, Color3.fromRGB(214, 232, 214))
+	radioText.LayoutOrder = 2
+	radioText.Parent = radio
 
 	-- Note reader
 	local note = Theme.create("Frame", {
@@ -218,34 +366,46 @@ function HUD.start()
 		ZIndex = 31,
 	})
 
+	local spawnedAt = os.clock()
 	local lastStatusChange = os.clock()
 	local lastValues = ""
 
 	RunService.RenderStepped:Connect(function()
+		local inMenu = ClientState.inMenu
+		pill.Visible = not inMenu
+		vitals.Visible = not inMenu
+		hints.Visible = not inMenu
+		objective.Visible = not inMenu and objTitle.Text ~= ""
+		if inMenu then
+			spawnedAt = os.clock()
+			return
+		end
 		local day = (ReplicatedStorage:GetAttribute("Day") :: number?) or 1
 		local phase = (ReplicatedStorage:GetAttribute("Phase") :: string?) or "Day"
 		local clockTime = (ReplicatedStorage:GetAttribute("ClockTime") :: number?) or 12
-		clock.Text = string.format(
-			"Day %d  ·  %s  ·  %s",
-			day,
-			PHASE_TEXT[phase] or phase,
-			Journal.formatClock(clockTime)
-		)
-		local nightType = ReplicatedStorage:GetAttribute("NightType")
+		dayLabel.Text = "DAY " .. tostring(day)
+		timeLabel.Text = twelveHour(clockTime)
 		local weather = (ReplicatedStorage:GetAttribute("Weather") :: string?) or "Clear"
-		local parts = {}
-		if weather ~= "Clear" then
-			table.insert(parts, string.lower(weather))
+		local rain = (ReplicatedStorage:GetAttribute("RainIntensity") :: number?) or 0
+		local weatherWord = WEATHER_TEXT[weather] or weather
+		if weather == "Rain" and rain < 1.6 then
+			weatherWord = "Light rain"
 		end
-		if
-			(phase == "Dusk" or phase == "Night")
-			and type(nightType) == "string"
-			and nightType ~= "Day"
-			and nightType ~= "Peaceful"
-		then
-			table.insert(parts, string.lower(nightType) .. " night")
+		weatherLabel.Text = string.upper(phase) .. "  ·  " .. string.upper(weatherWord)
+		weatherLabel.TextColor3 = if phase == "Night"
+			then C.Cold
+			elseif phase == "Dusk" then C.Amber
+			else C.Muted
+
+		local nightType = ReplicatedStorage:GetAttribute("NightType")
+		local dangerous = (phase == "Dusk" or phase == "Night")
+			and (nightType == "Bad" or nightType == "Black" or nightType == "Uneasy")
+		nightChip.Visible = dangerous
+		if dangerous and type(nightType) == "string" then
+			nightChip.Text = "  " .. string.upper(nightType) .. " NIGHT  "
+			nightChip.TextColor3 = if nightType == "Uneasy" then C.Amber else C.Danger
+			nightChip.BackgroundColor3 = nightChip.TextColor3
 		end
-		nightLine.Text = table.concat(parts, "  ·  ")
 
 		local comfort = (player:GetAttribute("Comfort") :: number?) or 0
 		local exposure = (player:GetAttribute("Exposure") :: number?) or 0
@@ -253,38 +413,39 @@ function HUD.start()
 		local breath = (player:GetAttribute("Breath") :: number?) or 1
 		local holding = player:GetAttribute("HoldingBreath") == true
 		local straining = player:GetAttribute("Straining") == true
-		comfortFill.Size = UDim2.fromScale(comfort / 100, 1)
-		exposureFill.Size = UDim2.fromScale(exposure / 100, 1)
-		staminaFill.Size = UDim2.fromScale(stamina / 100, 1)
-		breathFill.Size = UDim2.fromScale(breath, 1)
-		breathFill.BackgroundColor3 = if straining then C.Danger else C.Text
-		breathLbl.Text = if holding then "Holding breath" else "Breath"
 		local sheltered = player:GetAttribute("Sheltered") == true
-		comfortLbl.Text = if sheltered and player:GetAttribute("ShelterSecure") == true
-			then "Comfort · home"
-			else "Comfort"
-		coatLine.Text = if player:GetAttribute("Coat") == true then "Wearing the coat" else ""
+		local secure = sheltered and player:GetAttribute("ShelterSecure") == true
+		comfortFill.Size = UDim2.fromScale(math.clamp(comfort / 100, 0, 1), 1)
+		exposureFill.Size = UDim2.fromScale(math.clamp(exposure / 100, 0, 1), 1)
+		staminaFill.Size = UDim2.fromScale(math.clamp(stamina / 100, 0, 1), 1)
+		breathFill.Size = UDim2.fromScale(math.clamp(breath, 0, 1), 1)
+		breathFill.BackgroundColor3 = if straining then C.Danger else C.Text
+		breathLbl.Text = if holding then "HOLDING BREATH" else "BREATH"
+		comfortLbl.Text = if comfort >= 80
+			then "COMFORT · COZY"
+			elseif comfort < 25 then "COMFORT · UNEASY"
+			else "COMFORT"
+		exposureLbl.Text = if exposure >= 70
+			then "EXPOSURE · SEEN EASILY"
+			elseif exposure <= 20 then "EXPOSURE · HIDDEN"
+			else "EXPOSURE"
+		homeChip.Visible = secure
+		coatChip.Visible = player:GetAttribute("Coat") == true
+		chips.Visible = homeChip.Visible or coatChip.Visible or nightChip.Visible
 		staminaRow.Visible = stamina < 99
 		breathRow.Visible = holding or breath < 0.99
-		local key = string.format("%d|%d|%s", comfort // 5, exposure // 10, tostring(sheltered))
+
+		-- Quiet when nothing changes.
+		local key =
+			string.format("%d|%d|%s|%s", comfort // 5, exposure // 10, tostring(secure), tostring(holding))
 		if key ~= lastValues then
 			lastValues = key
 			lastStatusChange = os.clock()
 		end
 		local idle = os.clock() - lastStatusChange
-		local alpha = if idle > 8 then math.min((idle - 8) / 2, 0.85) else 0
-		for _, row in { comfortRow, exposureRow } do
-			for _, d in row:GetDescendants() do
-				if d:IsA("TextLabel") then
-					d.TextTransparency = alpha
-				elseif d:IsA("Frame") then
-					d.BackgroundTransparency = alpha
-				end
-			end
-		end
-		status.Visible = not ClientState.inMenu
-		objective.Visible = not ClientState.inMenu and objTitle.Text ~= ""
-		clock.Visible = not ClientState.inMenu
+		vitals.BackgroundTransparency = if idle > 10 then math.min(0.4 + (idle - 10) * 0.1, 0.9) else 0.4
+		local since = os.clock() - spawnedAt
+		hints.TextTransparency = if since > 25 then math.min(0.2 + (since - 25) * 0.1, 1) else 0.2
 	end)
 
 	Net.event("Notify").OnClientEvent:Connect(function(text: any, kind: any)
@@ -292,12 +453,24 @@ function HUD.start()
 			toast(text, if type(kind) == "string" then kind else nil)
 		end
 	end)
+	local lastObjective = ""
 	Net.event("Story").OnClientEvent:Connect(function(label: any, hint: any, completed: any)
-		objTitle.Text = if type(label) == "string" then label else ""
+		local newTitle = if type(label) == "string" then label else ""
+		objTitle.Text = newTitle
 		objHint.Text = if type(hint) == "string" then hint else ""
 		objHint.Visible = objHint.Text ~= ""
+		if newTitle ~= lastObjective and newTitle ~= "" then
+			lastObjective = newTitle
+			-- Slide in from the right.
+			objective.Position = UDim2.new(1, 340, 0, TOP + 40)
+			TweenService:Create(
+				objective,
+				TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+				{ Position = UDim2.new(1, -18, 0, TOP + 40) }
+			):Play()
+		end
 		if type(completed) == "string" then
-			toast("Done: " .. completed, "good")
+			toast("✓  " .. completed, "good")
 			ClientState.lastDiscovery = os.clock()
 		end
 	end)
@@ -309,21 +482,32 @@ function HUD.start()
 			ClientState.lastDiscovery = os.clock()
 		end
 	end)
+	local radioSerial = 0
 	Net.event("Radio").OnClientEvent:Connect(function(text: any)
 		if type(text) ~= "string" then
 			return
 		end
-		radio.Text = text
-		radio.TextTransparency = 0
-		task.delay(9, function()
-			if radio.Text == text then
-				TweenService:Create(radio, TweenInfo.new(1.5), { TextTransparency = 1 }):Play()
+		radioSerial += 1
+		local serial = radioSerial
+		-- "Maya: Morning..." shows the speaker separately.
+		local who, said = string.match(text, "^([%w%s']+):%s*(.+)$")
+		radioWho.Text = "RADIO" .. (if who then "  ·  " .. string.upper(who) else "")
+		radioText.Text = if said then said else text
+		radio.Visible = true
+		radio.BackgroundTransparency = 0.2
+		radioWho.TextTransparency = 0
+		radioText.TextTransparency = 0
+		task.delay(math.clamp(#text / 14, 5, 12), function()
+			if radioSerial == serial then
+				TweenService:Create(radio, TweenInfo.new(1.2), { BackgroundTransparency = 1 }):Play()
+				TweenService:Create(radioWho, TweenInfo.new(1.2), { TextTransparency = 1 }):Play()
+				TweenService:Create(radioText, TweenInfo.new(1.2), { TextTransparency = 1 }):Play()
 			end
 		end)
 	end)
 	Net.event("Journal").OnClientEvent:Connect(function(entry: any)
 		if type(entry) == "table" and type(entry.title) == "string" then
-			toast("Journal: " .. entry.title, "warning")
+			toast("Journal  ·  " .. entry.title, "warning")
 		end
 	end)
 	Net.event("Captured").OnClientEvent:Connect(function(text: any)
@@ -344,6 +528,7 @@ function HUD.start()
 			TweenService:Create(fadeText, TweenInfo.new(3), { TextTransparency = 1 }):Play()
 		end)
 	end)
+	local _ = Journal
 end
 
 HUD.toast = function(_text: string, _kind: string?) end

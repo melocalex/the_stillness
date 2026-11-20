@@ -538,6 +538,7 @@ local function setupFireplace(core: BasePart, firePrompt: ProximityPrompt, cookP
 				PlayerService.markRoutine(player, "fire")
 			end
 			StoryService.setFact("fireLit", true)
+			StoryService.setFact("fireFed", true)
 			NoiseService.emit(core.Position, "cabinet", player)
 			label()
 		end
@@ -576,6 +577,13 @@ local function setupFireplace(core: BasePart, firePrompt: ProximityPrompt, cookP
 end
 
 -- Story props ---------------------------------------------------------------------------
+
+-- The opening claims the radio while Maya's morning call is pending.
+local radioHook: ((Player) -> boolean)? = nil
+
+function InteractionService.setRadioHook(fn: (Player) -> boolean)
+	radioHook = fn
+end
 
 local function radioText(): string
 	local nightType = ReplicatedStorage:GetAttribute("NightType")
@@ -646,7 +654,7 @@ local function setupProps(world: Instance)
 			end)
 		elseif p.Name == "RadioPrompt" then
 			p.Triggered:Connect(function(player)
-				if near(player, p) then
+				if near(player, p) and not (radioHook and radioHook(player)) then
 					Net.event("Radio"):FireClient(player, radioText())
 					cue("radioStatic", part.Position, 0.6)
 					NoiseService.emit(part.Position, "radio", player)
@@ -694,14 +702,6 @@ local function setupProps(world: Instance)
 				Net.event("Note"):FireClient(player, "The signal", StoryConfig.Notes.radio)
 				NoiseService.emit(part.Position, "radio", player)
 				cue("radioVoice", part.Position)
-			end)
-		elseif p.Name == "CluePrompt" then
-			p.Triggered:Connect(function(player)
-				if not near(player, p) then
-					return
-				end
-				StoryService.setFact("lakeHouseInvestigated", true)
-				Net.event("Note"):FireClient(player, "A journal", StoryConfig.Notes.lakeHouse)
 			end)
 		end
 	end

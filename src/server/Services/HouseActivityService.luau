@@ -65,6 +65,9 @@ local function setRoomIn(h: Model, room: string, on: boolean)
 	end
 end
 
+-- MayaService lights her own house with the same pane/bulb rules.
+HouseActivityService.setRoomIn = setRoomIn
+
 local function setRoom(room: string, on: boolean)
 	local h = house
 	if h then
