@@ -48,16 +48,23 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
   its head turns toward the camera. Under a direct gaze it held still for
   about 30 s, then resumed. Its fear energy fell from 0.8 to 0.35 with
   nobody afraid nearby (starving works).
+- Caramelo's mood (build head7, night 2): asleep on his bed, his agitation
+  rose as a Watcher approached; head up (level 1) at about 40 studs,
+  suspicious (level 2, the growl level) at about 16 studs, back to sleep
+  when the Watcher lost interest. A Watcher outside the secure cabin never
+  pushed him to barking. With the coat on, the "Hide together" prompt
+  appears on him.
 
 ## Automated tests
 
-- 75 Lune unit tests over the pure logic: TimeCycle, Perception,
+- 81 Lune unit tests over the pure logic: TimeCycle, Perception,
   CreatureBrain, Shelter, Noise, CollectiveMind, Inventory, NightClass
   (including the 65/25/9/1 night weights and the scripted first nights),
   Comfort, LightVisibility, MusicState (including storm night), Journal,
   StoryProgress, Mystery, Breath, AudioConfig, FearEcology (fear bounds,
-  diminishing returns, starving, temperament limits) and RadioConfig (every
-  condition and story fact exists).
+  diminishing returns, starving, temperament limits), DogMind (senses,
+  hysteresis, bark odds, step-by-step calming, familiarity) and RadioConfig
+  (every condition and story fact exists).
 - Every server service, client controller and world builder is type-checked
   in strict mode and built by Rojo, but **no service has a behavioural
   test**. That includes MayaService, OpeningService, ToolService, the HUD
@@ -78,6 +85,15 @@ Chapter 35, the unnatural creatures (ca7b018, 8287b7e):
 - Temperaments and the fear ecology raising boldness (characters' fear from
   fictional signals, creatures feeding within 90 studs).
 - The radio drawing every line from what is happening (569ea4e).
+
+Chapter 38, Caramelo (ac163c4, 638d6d1):
+
+- Not yet seen: the growl and whimper sounds playing, barking as noise
+  creatures react to, the new bark sound (9113956187), calming step by step
+  (T while he is agitated), actually hiding together (crouch with C, then
+  E; automation could not hold a crouch), seeking you when frightened,
+  learning and training. Training lives only for the session; it is not
+  saved yet.
 
 Revision 2.0 (commits d248a33 and faf03a6, 2026-11-20):
 
