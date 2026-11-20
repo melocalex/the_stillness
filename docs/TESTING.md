@@ -12,6 +12,10 @@
   noise, collective mind, inventory, night classification, comfort,
   light visibility, music state, journal, story progress, mystery,
   breath, and the config files they read.
+- Terrain specs in `tests/terrain.spec.luau` for the valley height
+  function: building pads, the lake, creature spawn points, sightlines,
+  the Old One's spots, dry and walkable paths, and the valley shape, with
+  the pre-rebuild terrain as a control (details in [WORLD.md](WORLD.md#tests)).
 - A Rojo build of the place file.
 
 Gameplay inside Roblox cannot run under Lune; it is checked in Studio.
@@ -24,6 +28,12 @@ Mark each item only after seeing it in a Studio playtest.
 - [ ] Character spawns at the forest trail, not inside terrain
 - [ ] Cabin exists, doors and windows render, porch light is on
 - [ ] Terrain has collision everywhere you can walk; boundary walls stop you
+- [ ] No wall of snow or ice around the valley; snowy peaks only far away, hazy
+- [ ] From the cabin's north window: the lake and Maya's house, no tree in the way
+- [ ] The lakeside path leads to Maya's porch; Caramelo follows the whole way
+- [ ] Lake shore shows beach, mud and pebble stretches; water is not flat blue
+- [ ] From Radio Hill and the hill house: ridges, gaps, no edge of the terrain
+- [ ] `[Terrain]`, `[Forest]` and `[World] built in` lines in the server output
 - [ ] Gather prompt appears on marked trees, rocks and bushes; yields items
 - [ ] Neighbor houses, lake house, radio tower and town are visible from afar
 
@@ -55,5 +65,6 @@ Mark each item only after seeing it in a Studio playtest.
 ## Performance
 
 Report measured numbers only (Studio **View > Stats / MicroProfiler**).
-Measured so far: server world generation 6.7 s for the 2 km map
-(Studio test, 2026-11-20).
+Measured so far: server world generation 6.7 s for the old 2 km map
+(Studio test, 2026-11-20). The rebuilt 3.2 km valley has not been timed in
+Studio yet.
