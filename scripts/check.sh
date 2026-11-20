@@ -27,6 +27,7 @@ fi
 
 echo "== lune tests"
 lune run tests/logic.spec
+lune run tests/terrain.spec
 
 echo "== rojo build"
 mkdir -p build

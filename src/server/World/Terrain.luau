@@ -1,4 +1,5 @@
 --!strict
+--!native
 -- Writes the Pinehaven valley into Roblox terrain at server start. Heights
 -- come from the pure, deterministic height function in
 -- Shared.Logic.Heightfield (Lune-tested, also rendered to docs/world-map.svg);
@@ -70,12 +71,11 @@ local function materialAt(x: number, z: number, h: number, slope: number): Enum.
 			then Enum.Material.Sand
 			else Enum.Material.Mud
 	end
-	local snow = field.snowLine(x, z)
-	if h > snow then
-		return if slope > 1.25 then Enum.Material.Rock else Enum.Material.Snow
+	if field.isSnow(x, z, h, slope) then
+		return Enum.Material.Snow
 	end
-	if h > snow - 45 and slope < 0.7 and math.noise(x / 36, z / 36, 33.1) > 0.3 then
-		return Enum.Material.Snow -- lingering patches below the line
+	if h > field.snowLine(x, z) then
+		return Enum.Material.Rock -- a face too steep to hold snow
 	end
 	if slope > 1.1 then
 		return if h > 110 then Enum.Material.Rock else Enum.Material.Slate
@@ -119,8 +119,10 @@ local function materialAt(x: number, z: number, h: number, slope: number): Enum.
 end
 
 -- Writes all terrain voxels. Heights are evaluated once per 4-stud column
--- into a grid (slopes read neighbours from it), then written in 64-stud
--- chunks, each only over its own height band.
+-- into a grid (slopes read neighbours from it); outside the play area only
+-- every other column in each direction is evaluated and the rest filled
+-- bilinearly (nobody walks there). Then 64-stud chunks are written, each
+-- over its own height band.
 function Terrain.generate()
 	local started = os.clock()
 	local terrain = workspace.Terrain
@@ -135,15 +137,42 @@ function Terrain.generate()
 		end
 	end
 
+	local function coord(i: number): number
+		return -half + (i - 1) * CELL + CELL / 2
+	end
+	local function farCoord(i: number): boolean
+		return math.abs(coord(i)) > FAR + 2 * CELL
+	end
 	local grid: { { number } } = table.create(total)
+	local evaluated = 0
 	for ix = 1, total do
 		local col = table.create(total)
-		local x = -half + (ix - 1) * CELL + CELL / 2
+		local x = coord(ix)
+		local xFar = farCoord(ix)
 		for iz = 1, total do
-			col[iz] = field.heightAt(x, -half + (iz - 1) * CELL + CELL / 2)
+			if (xFar or farCoord(iz)) and (ix % 2 == 0 or iz % 2 == 0) then
+				col[iz] = math.huge -- filled from the lattice below
+			else
+				col[iz] = field.heightAt(x, coord(iz))
+				evaluated += 1
+			end
 		end
 		grid[ix] = col
 		budget()
+	end
+	-- Odd/odd columns are always evaluated; fill the others between them.
+	local last = if total % 2 == 0 then total - 1 else total
+	for ix = 1, total do
+		local col = grid[ix]
+		local x0 = if ix % 2 == 1 then ix else ix - 1
+		local x1 = if ix % 2 == 1 then ix else math.min(ix + 1, last)
+		for iz = 1, total do
+			if col[iz] == math.huge then
+				local z0 = if iz % 2 == 1 then iz else iz - 1
+				local z1 = if iz % 2 == 1 then iz else math.min(iz + 1, last)
+				col[iz] = (grid[x0][z0] + grid[x0][z1] + grid[x1][z0] + grid[x1][z1]) / 4
+			end
+		end
 	end
 	local heightsDone = os.clock() - started
 
@@ -155,13 +184,19 @@ function Terrain.generate()
 			local x0 = -half + cx * CELL
 			local z0 = -half + cz * CELL
 			local far = math.abs(x0 + nx * CELL / 2) > FAR or math.abs(z0 + nz * CELL / 2) > FAR
+			-- The band reaches as low as the columns bordering the chunk, so a
+			-- steep drop next door never exposes the underside of this band.
 			local lo, hi = math.huge, -math.huge
+			for gx = math.max(cx, 1), math.min(cx + nx + 1, total) do
+				local col = grid[gx]
+				for gz = math.max(cz, 1), math.min(cz + nz + 1, total) do
+					lo = math.min(lo, col[gz])
+				end
+			end
 			for ix = 1, nx do
 				local col = grid[cx + ix]
 				for iz = 1, nz do
-					local h = col[cz + iz]
-					lo = math.min(lo, h)
-					hi = math.max(hi, h)
+					hi = math.max(hi, col[cz + iz])
 				end
 			end
 			local wet = lo < W.WaterLevel
@@ -244,8 +279,9 @@ function Terrain.generate()
 	terrain:SetMaterialColor(Enum.Material.Snow, Color3.fromRGB(232, 236, 240))
 	print(
 		string.format(
-			"[Terrain] %d columns, %.1fM voxels: heights %.2fs, total %.2fs",
+			"[Terrain] %d columns (%d evaluated), %.1fM voxels: heights %.2fs, total %.2fs",
 			total * total,
+			evaluated,
 			voxels / 1e6,
 			heightsDone,
 			os.clock() - started

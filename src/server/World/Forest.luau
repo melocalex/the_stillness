@@ -46,15 +46,15 @@ local MIX: { [string]: { { any } } } = {
 	Shore = { { "Cedar", 0.4 }, { "Birch", 0.7 }, { "Oak", 0.85 }, { "Ponderosa", 1 } },
 	Deep = { { "Cedar", 0.55 }, { "Ponderosa", 1 } },
 	Hill = { { "Ponderosa", 0.6 }, { "Cedar", 0.9 }, { "Birch", 1 } },
+	High = { { "Ponderosa", 0.75 }, { "Cedar", 1 } },
 	Valley = { { "Ponderosa", 0.45 }, { "Cedar", 0.7 }, { "Birch", 0.9 }, { "Oak", 1 } },
 }
 
 local function biomeKind(x: number, z: number, h: number, rng: Random): string
-	if h > W.Forest.FrostLine then
-		return "SnowPine"
-	end
-	local mix = if Terrain.lakeMetric(x, z) < 45
-		then MIX.Shore
+	-- No snow-laden pines: there is no snow anywhere trees grow.
+	local mix = if h > 110
+		then MIX.High
+		elseif Terrain.lakeMetric(x, z) < 45 then MIX.Shore
 		elseif regionWeight(x, z, "DeepForest") > 0.2 then MIX.Deep
 		elseif h > 30 then MIX.Hill
 		else MIX.Valley
