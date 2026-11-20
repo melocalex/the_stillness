@@ -47,6 +47,15 @@ Updated 2026-11-20. Four columns of truth:
 - Caramelo: caramel-tinted rigged mesh dog, walk/idle sequences (Studio) or
   procedural legs, heart and message when petted.
 
+## Implemented 2026-11-20, waiting for a Studio check
+
+- Axe tool (StarterPack, key 1): built-in slash animation; trees need the
+  axe; chips and shake per hit; the last hit fells the tree away from the
+  player, then a stump; regrows. Uses a procedural axe until the Creator
+  Store axe (87307912628259, 0 scripts) is imported.
+- Petting: dog stops, faces the player and sits wagging; the player turns,
+  bends and strokes the dog (IKControl).
+
 ## In progress
 
 - Pinehaven town with grocery, hardware, pharmacy and vet interiors,
