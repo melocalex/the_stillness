@@ -44,6 +44,7 @@ export type AnomalyConfig = {
 	coherencePerSecond: number,
 	coherenceScan: number,
 	coherenceSteps: { number },
+	coherentAt: number,
 	echoSteps: { number },
 	noOutsideCoherence: number,
 	noOutsideChance: number,
@@ -231,10 +232,10 @@ function Dissonance.arrivalLine(
 	if rareAllowed and coherence >= cfg.noOutsideCoherence and roll < cfg.noOutsideChance then
 		return Dissonance.NO_OUTSIDE, true
 	end
-	if coherence >= 0.85 then
+	if coherence >= cfg.coherentAt then
 		return Dissonance.ARRIVAL, false
 	end
-	return Dissonance.corrupt(Dissonance.ARRIVAL, clamp(0.15 + coherence, 0, 1), seed), false
+	return Dissonance.corrupt(Dissonance.ARRIVAL, clamp(0.4 + coherence, 0, 1), seed), false
 end
 
 -- Replay plan for the Echo. times are when recent sounds played, oldest

@@ -1119,6 +1119,58 @@ describe("Dissonance", function()
 			end
 		end
 	end)
+	it("plays the 36.12 rainy-night numbers in pure logic", function()
+		local f = ChaosField.new(FC)
+		local g = gaussFrom(36)
+		local rainy = quietEnv({ rain = 2 })
+		for _ = 1, 120 do
+			ChaosField.step(f, 1, rainy, g)
+		end
+		local function reading(mode: string): number
+			return ChaosField.read(f, 3, 5, MODES[mode], 5, SENS.min, SENS.max, 0).ceu
+		end
+		local before = reading("LOCAL")
+		truthy(before >= 9 and before < LEVELS[2].from, "a cozy rainy night reads " .. before)
+		local home = ChaosField.sectorAt(f, 0, 0)
+		local a = Dissonance.newAnomaly(1, "Arrival", home.x, home.z, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local scanSig = Dissonance.signature(true, MODES.LOCAL.signature, 5, SENS.min, SENS.max)
+		local onsetEnd, activeEnd, regional, peak = 0, 0, 0, 0
+		local transmissions, whole = 0, false
+		for _ = 1, 400 do
+			-- The player turns sensitivity up 20 s into the disturbance.
+			local scanning = a.stage == "PEAK" or (a.stage == "ACTIVE" and a.stageAge > 20)
+			local stageBefore = a.stage
+			for _, b in Dissonance.step(a, 1, if scanning then scanSig else 0, AC) do
+				if b == "transmit" then
+					transmissions += 1
+					whole = whole or a.coherence >= AC.coherentAt
+				end
+			end
+			ChaosField.step(f, 1, quietEnv({ rain = 2, sources = { Dissonance.source(a) } }), g)
+			if stageBefore == "ONSET" and a.stage == "ACTIVE" then
+				onsetEnd = reading("LOCAL")
+			elseif stageBefore == "ACTIVE" and a.stage == "PEAK" then
+				activeEnd = reading("LOCAL")
+				regional = reading("REGIONAL")
+			end
+			peak = math.max(peak, reading("LOCAL"))
+			if a.stage == "DONE" then
+				break
+			end
+		end
+		truthy(
+			onsetEnd >= before + 3 and onsetEnd < LEVELS[3].from,
+			"onset climbs gently: " .. before .. " to " .. onsetEnd
+		)
+		truthy(activeEnd >= LEVELS[3].from, "local reads a disturbance: " .. activeEnd)
+		truthy(regional < LEVELS[3].from, "regional stays mostly normal: " .. regional)
+		truthy(peak < LEVELS[5].from, "scanning raises it, never to THRESHOLD: " .. peak)
+		truthy(transmissions >= 3 and whole, "the phrase repeats and comes through whole")
+		for _ = 1, 90 do
+			ChaosField.step(f, 1, rainy, g)
+		end
+		truthy(reading("LOCAL") < LEVELS[2].from, "afterwards the needle settles")
+	end)
 	it("config is ordered and the passive mode is silent", function()
 		for i = 2, #LEVELS do
 			truthy(LEVELS[i].from > LEVELS[i - 1].from)

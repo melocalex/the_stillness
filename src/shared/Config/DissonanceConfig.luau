@@ -18,8 +18,8 @@ DissonanceConfig.Field = {
 	baseline = 7, -- CEU on a quiet afternoon
 	nightLift = 3, -- extra background CEU at full night
 	driftPull = 0.02, -- mean reversion of the slow drift, per second
-	driftSigma = 0.6, -- random walk step, CEU per sqrt(second)
-	driftLimit = 8,
+	driftSigma = 0.45, -- random walk step, CEU per sqrt(second)
+	driftLimit = 6,
 	rainPerUnit = 1.5, -- CEU per unit of RainIntensity (0..5)
 	stormFrom = 3.4, -- rain above this adds interference, not energy
 	stormInterference = 2.5, -- noise CEU per unit of rain above stormFrom
@@ -87,11 +87,12 @@ DissonanceConfig.Anomaly = {
 	} :: { [string]: { number } },
 	-- CEU at the source at full envelope.
 	strength = { Arrival = 34, Echo = 22, Absence = 26 } :: { [string]: number },
-	feedRate = 0.06, -- strength gain per second per unit of scan signature
-	feedMax = 0.6, -- scanning can add at most +60% strength
+	feedRate = 0.03, -- strength gain per second per unit of scan signature
+	feedMax = 0.35, -- scanning can add at most +35% strength
 	coherencePerSecond = 0.006, -- Arrival coherence gained per second (ACTIVE, PEAK)
 	coherenceScan = 0.03, -- extra coherence per second per unit of signature
-	coherenceSteps = { 0.2, 0.45, 0.7, 0.88 },
+	coherenceSteps = { 0.2, 0.45, 0.7, 0.92 }, -- one transmission at each
+	coherentAt = 0.7, -- from here the line comes through whole
 	echoSteps = { 0.5, 0.75 }, -- envelope steps where the Echo replays
 	noOutsideCoherence = 0.9,
 	noOutsideChance = 0.2,
@@ -130,7 +131,10 @@ DissonanceConfig.Director = {
 	hushSeconds = { 6, 10 },
 	mayaDarkSeconds = { 2.5, 4 },
 	ghostPause = { 3, 6 },
-	dogSeconds = 14,
+	-- StartleStrength handed to Caramelo's mood system (0..0.5). Inside the
+	-- house with his person near, 0.22 lands at ALERT (head up) and 0.45 at
+	-- SUSPICIOUS (low growl); barking needs PANICKED, far above either.
+	startle = { dogRouse = 0.22, dogWatch = 0.3, dogGrowl = 0.45 } :: { [string]: number },
 	homeShare = 4, -- CEU of anomaly at home before house events may fire
 	hearRadius = 45, -- studs from the scope: who hears transmissions
 	controlRadius = 12, -- studs from the scope: who may turn its knobs

@@ -97,6 +97,12 @@ local function record(player: Player, id: string, subject: string, text: string)
 	end
 end
 
+-- Other systems (the Chaoscope) write observed entries the same way.
+-- The id deduplicates: the same event is only ever recorded once.
+function ObservationService.note(player: Player, id: string, subject: string, text: string)
+	record(player, id, subject, text)
+end
+
 -- Eye position and look direction used for this player's observation.
 local function viewOf(player: Player): (Vector3?, Vector3?, number, number)
 	local s = PlayerService.get(player)
