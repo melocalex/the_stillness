@@ -50,6 +50,28 @@ return {
 	birdsTakeOff = 9125738421, -- Pigeon Surges Sudden Bursts Of Birds Flying (SFX), ProSoundEffects
 	wingFlaps = 9113444620, -- Bird Wing Flaps Pigeon Two 1 (SFX), ProSoundEffects
 	dogBarkFar = 9114370187, -- Farm Animals Dog Barking 1 (SFX), ProSoundEffects
+	-- Storm library v2 (Chapter 30), pending Studio verification
+	rainOnWindow = 9112857056, -- Rain On Window 2 (SFX), ProSoundEffects
+	rainOnWindow2 = 9112856768, -- Rain On Window 3 (SFX), ProSoundEffects
+	rainGutter = 9112853895, -- Rain In Gutter 3 (SFX), ProSoundEffects
+	dripBucket = 9112903083, -- Water Drip Single Drops Into Tin Bucket 3 (SFX), ProSoundEffects
+	dripPuddle = 9112893331, -- Water Drips In Bathroom Splats Ploops 2 (SFX), ProSoundEffects
+	windTrees = 9116258071, -- Leaves Rustle Wind Blowing Through Trees 1 (SFX), ProSoundEffects
+	windTrees2 = 9116258282, -- Leaves Rustle Wind Blowing Through Trees 2 (SFX), ProSoundEffects
+	windGusts2 = 9114057128, -- Desert Wind Whistley Light Gusts 2 (SFX), ProSoundEffects
+	shutterBang = 9119128490, -- Shutter Bangs Rattle Shaking Wood Hits 29 (SFX), ProSoundEffects
+	latchClick = 9116725218, -- Metal Latches 17 (SFX), ProSoundEffects
+	glassBreak = 9114590297, -- Glass Break 1 (SFX), ProSoundEffects
+	glassBreak2 = 9114592245, -- Glass Breaks 3 (SFX), ProSoundEffects
+	floorCreak = 9125563505, -- Floor Creaks Wood Floorboard (SFX), ProSoundEffects
+	floorCreak2 = 9114496277, -- Floor Creaks Short Med Wood Creaks 24 (SFX), ProSoundEffects
+	wetFootsteps = 9120589946, -- Water Splash Wet Smacking Footsteps 1 (SFX), ProSoundEffects
+	dogGrowl = 9120788137, -- Wolf Growl 3 (SFX), ProSoundEffects (quiet canine growl)
+	dogWhimper = 9113951726, -- Coyote Whimpering Yelping Crying 6 (SFX), ProSoundEffects
+	exhaleSoft = 9113586280, -- Breath Exhale 20 (SFX), ProSoundEffects
+	thunderDistant3 = 9120018692, -- Thunder Distant Rumble 1 (SFX), ProSoundEffects
+	thunderStrike = 9120021539, -- Thunder Sharp Booming Strikes Rumbling 3 (SFX), ProSoundEffects
+	musicBoxUnease = 1837805876, -- Music Box Of Death, APMOfficial (Watcher unease motif)
 	-- Music
 	musicMenu = 1838792473, -- Dawn 2, APMOfficial
 	musicHome = 113205710506304, -- Relaxing Piano and Crackling Fireplace, DistrokidOfficial
