@@ -390,21 +390,20 @@ WorldConfig.Regions = regions
 WorldConfig.Sightlines = sightlines
 
 WorldConfig.Forest = {
-	Trees = 2600, -- attempts; local forest density decides how many stand
+	CellSize = 34, -- grove grid (studs)
+	MaxPerCell = 1.6, -- trees in a fully dense cell
+	MinSpacing = 6, -- between trunks
+	Treeline = 150, -- no trees above this height
+	FrostLine = 135, -- frosted pines above this height
+	FarTrees = 420, -- shadowless scenery trees outside the play area
 	Rocks = 220,
 	Bushes = 380,
+	Ferns = 650,
 	Mushrooms = 120,
 	Logs = 80,
+	Stumps = 60,
 	ResourceTreeFraction = 0.35,
 	ResourceRockFraction = 0.6,
-	-- No trees in these circles (buildings and the lake).
-	KeepClear = {
-		{ x = 0, z = 0, r = 34 },
-		{ x = 14, z = 78, r = 8 },
-		{ x = 0, z = -248, r = 22 },
-		{ x = 178, z = 42, r = 22 },
-		{ x = -215, z = -55, r = 16 },
-	},
 }
 
 return WorldConfig
