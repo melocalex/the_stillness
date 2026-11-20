@@ -103,6 +103,16 @@ AudioConfig.Cues = {
 	footstep = "rbxasset://sounds/action_footsteps_plastic.mp3",
 } :: { [string]: string }
 
+-- The H-17 Chaoscope on the cabin table (Chapter 36). hum and tone stay
+-- empty until a partner-catalog id is verified in Studio; until then the
+-- scope's hum falls back to the radio static, played very quietly and slow.
+AudioConfig.Chaoscope = {
+	hum = "",
+	tone = "",
+	click = id(9125609743), -- Hotel Light Switch Clicks (the relay click)
+	static = id(9125774208), -- Police Radio Line Feed Static 1
+} :: { [string]: string }
+
 -- Mixer tuning.
 AudioConfig.Mix = {
 	MusicVolume = 0.45,
