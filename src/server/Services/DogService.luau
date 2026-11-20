@@ -5,7 +5,14 @@
 --
 -- Dog model attributes: Owner (UserId), DogState (follow, stay, sit, sleep,
 -- home, hide, come), Pose (stand, sit, sleep, hide, alert, happy), Alert,
--- Calmed.
+-- Agitation (0..1), DogMood (RELAXED, ALERT, SUSPICIOUS, AFRAID, PANICKED,
+-- CONCEALED, RECOVERING).
+--
+-- Chapter 38: he senses creatures with his own ears, eyes and a nose for
+-- presence, imperfectly. His mood (Logic/DogMind) drives what you see and
+-- hear: head up, a quiet growl, whimpering and seeking you or his bed,
+-- barking. Barks are real noise events creatures can hear. You can calm him
+-- step by step, and hide together under the coat.
 
 local CollectionService = game:GetService("CollectionService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -13,6 +20,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local DogMind = require(ReplicatedStorage.Shared.Logic.DogMind)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Rigs = require(script.Parent.Parent.Creatures.Rigs)
@@ -21,6 +29,7 @@ local NoiseService = require(script.Parent.NoiseService)
 local PlayerService = require(script.Parent.PlayerService)
 local ShelterService = require(script.Parent.ShelterService)
 local TimeService = require(script.Parent.TimeService)
+local WeatherService = require(script.Parent.WeatherService)
 
 local DogService = {}
 
@@ -38,12 +47,25 @@ type Dog = {
 	lastPos: Vector3,
 	stuckFor: number,
 	lastBark: number,
-	lastGrowl: number,
-	calmedDay: number,
 	ownerIdleFor: number,
 	lastOwnerPos: Vector3,
 	happyUntil: number,
-	auto: string?, -- automatic override: "hide" or "bed"
+	auto: string?, -- automatic override: "hide", "bed" or "seek"
+	-- Chapter 38
+	mind: DogMind.Mind,
+	concealed: boolean,
+	concealSince: number,
+	concealLoose: number,
+	nextGrowl: number,
+	nextWhine: number,
+	barkNoticeAt: number,
+	seenKinds: { [string]: boolean },
+	quietTrained: boolean,
+	hideTrained: boolean,
+	gustAt: number,
+	threatDist: number,
+	petPrompt: ProximityPrompt?,
+	hidePrompt: ProximityPrompt?,
 }
 
 local D = GameConfig.Dog
@@ -162,17 +184,127 @@ local function faceToward(d: Dog, pos: Vector3)
 	end
 end
 
-local function nearestThreat(pos: Vector3): (Vector3?, number)
-	local best, bestD = nil, math.huge
+-- What he picks up: movement he hears, silhouettes he sees, a presence he
+-- feels through walls, all further than you would. He is not perfect: deer,
+-- crows and gusts can set him off, heavy rain hides footsteps, and a
+-- perfectly still Watcher can slip past his eyes.
+local function sense(d: Dog): (number, string?, Vector3?, number)
+	local pos = d.root.Position
+	local head = pos + Vector3.new(0, 1.5, 0)
+	local rain = (ReplicatedStorage:GetAttribute("RainIntensity") :: number?) or 0
+	local best, bestDist = 0, math.huge
+	local bestKind: string?, bestPos: Vector3? = nil, nil
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { d.model }
 	for _, c in CreatureService.list() do
-		if c.state ~= "DORMANT" and c.state ~= "RETREAT" then
-			local dd = (c.root.Position - pos).Magnitude
-			if dd < bestD then
-				best, bestD = c.root.Position, dd
-			end
+		if c.state == "DORMANT" or c.state == "RETREAT" then
+			continue
+		end
+		local cpos = c.root.Position
+		local dist = (cpos - pos).Magnitude
+		if dist > 120 then
+			continue
+		end
+		local moving = c.root.AssemblyLinearVelocity.Magnitude > 1.5
+		local still = not moving and c.temperament == "Patient"
+		local seen = dist < 90
+			and not (still and dist > 35)
+			and workspace:Raycast(head, cpos - head, params) == nil
+		local s = DogMind.signal(d.mind, c.kind, dist, {
+			heard = moving and (rain < 3 or dist < 35),
+			seen = seen,
+			presence = dist < 30,
+		})
+		if s > best then
+			best, bestKind, bestPos, bestDist = s, c.kind, cpos, dist
 		end
 	end
-	return best, bestD
+	if best < 0.2 then
+		for _, w in CollectionService:GetTagged("Wildlife") do
+			if w:IsA("Model") then
+				local wpos = w:GetPivot().Position
+				local dist = (wpos - pos).Magnitude
+				local s = DogMind.signal(
+					d.mind,
+					"Wildlife",
+					dist,
+					{ heard = true, seen = dist < 25, presence = false }
+				)
+				if s > best then
+					best, bestKind, bestPos, bestDist = s, "Wildlife", wpos, dist
+				end
+			end
+		end
+		if now() - d.gustAt < 2 and DogMind.KindWeight.Wind > best then
+			best, bestKind, bestPos, bestDist = DogMind.KindWeight.Wind, "Wind", nil, math.huge
+		end
+	end
+	return best, bestKind, bestPos, bestDist
+end
+
+local function mayaNear(pos: Vector3): boolean
+	for _, m in CollectionService:GetTagged("Maya") do
+		if m:IsA("Model") and (m:GetPivot().Position - pos).Magnitude < 20 then
+			return true
+		end
+	end
+	return false
+end
+
+-- Barking is a real sound: creatures can hear it. A panic bark is two or
+-- three; a single defensive bark can startle a Crawler right on top of him.
+local function bark(d: Dog, panic: boolean, threatDist: number)
+	local owner = d.owner
+	local n = if panic then math.random(2, 3) else 1
+	task.spawn(function()
+		for _ = 1, n do
+			if not d.model.Parent then
+				return
+			end
+			local p = d.root.Position
+			NoiseService.emit(p, "bark", owner)
+			Net.event("SoundCue"):FireAllClients("bark", p, 1)
+			task.wait(0.45)
+		end
+	end)
+	if not panic and threatDist < 14 and math.random() < 0.5 then
+		CreatureService.fleeFrom(d.root.Position, 14, "Crawler")
+	end
+	if now() - d.barkNoticeAt > 20 then
+		d.barkNoticeAt = now()
+		Net.event("Notify"):FireClient(
+			owner,
+			"Caramelo is barking. Calm him (T), or crouch in your coat and hide together (E).",
+			"warning"
+		)
+	end
+end
+
+-- One calming moment. It never erases panic at once, and less so with the
+-- thing still close. Calming him down from real fear teaches him quiet.
+local function calmDog(d: Dog)
+	local before = d.mind.level
+	DogMind.calm(d.mind, d.threatDist < 40, DogMind.Default)
+	d.happyUntil = 0
+	if d.mind.agitation < DogMind.Default.down[2] then
+		if before >= 3 and not d.quietTrained then
+			d.quietTrained = true
+			DogMind.train(d.mind, "quietness", 0.05)
+		end
+		Net.event("Notify"):FireClient(d.owner, "He settles against your leg.", "info")
+	else
+		Net.event("Notify")
+			:FireClient(d.owner, "You stroke his back and murmur. He is still trembling.", "info")
+	end
+	Net.event("SoundCue"):FireAllClients("whine", d.root.Position, 0.25)
+end
+
+local function conceal(d: Dog)
+	d.concealed = true
+	d.concealSince = now()
+	d.concealLoose = 0
+	d.auto = nil
 end
 
 local function command(player: Player, cmd: any)
@@ -185,10 +317,7 @@ local function command(player: Player, cmd: any)
 	end
 	d.auto = nil
 	if cmd == "calm" then
-		d.calmedDay = TimeService.snapshot().day
-		d.model:SetAttribute("Calmed", true)
-		d.happyUntil = now() + 2
-		Net.event("Notify"):FireClient(player, "You hush the dog. It settles against your leg.", "info")
+		calmDog(d)
 		return
 	end
 	d.state = cmd
@@ -208,9 +337,6 @@ local function tickDog(d: Dog, dt: number)
 	local dist = flat(ownerPos - pos).Magnitude
 	local snap = TimeService.snapshot()
 	local night = snap.phase == "Night" or snap.phase == "Dusk"
-	if snap.day ~= d.calmedDay then
-		d.model:SetAttribute("Calmed", false)
-	end
 
 	-- Owner idle time (for settling down on the dog bed).
 	if (ownerPos - d.lastOwnerPos).Magnitude < 1 then
@@ -220,24 +346,79 @@ local function tickDog(d: Dog, dt: number)
 	end
 	d.lastOwnerPos = ownerPos
 
-	-- Threat awareness: alert, growl, maybe bark.
-	local threatPos, threatDist = nearestThreat(pos)
-	local alert = threatPos ~= nil and threatDist < D.AlertRange
+	-- His senses, his mood, his reactions.
+	local signal, kind, threatPos, threatDist = sense(d)
+	d.threatDist = threatDist
+	local target = DogMind.target(d.mind, signal, {
+		ownerNear = dist < 12,
+		concealed = d.concealed,
+		mayaNear = mayaNear(pos),
+		inShelter = ShelterService.shelterAt(pos, 1) ~= nil,
+		thunder = false,
+	})
+	local wasLevel, peakBefore = d.mind.level, d.mind.peak
+	DogMind.step(d.mind, target, dt, DogMind.Default)
+	local level = d.mind.level
+	if level >= 2 and kind and kind ~= "Wildlife" and kind ~= "Wind" then
+		d.seenKinds[kind] = true
+	end
+	if level == 0 and wasLevel > 0 and peakBefore >= 2 then
+		-- It came, it went, nothing happened: next time it is a little less.
+		if not s.captured then
+			for k in d.seenKinds do
+				DogMind.learn(d.mind, k)
+			end
+		end
+		table.clear(d.seenKinds)
+		d.quietTrained = false
+		d.hideTrained = false
+	end
+	local alert = level >= 1
 	d.model:SetAttribute("Alert", alert)
+	d.model:SetAttribute("Agitation", math.floor(d.mind.agitation * 100 + 0.5) / 100)
+	d.model:SetAttribute("DogMood", DogMind.state(d.mind, d.concealed))
 	local uneasy = ReplicatedStorage:GetAttribute("BadNightWarning") == true
 	d.model:SetAttribute("Uneasy", uneasy)
-	local calmed = d.calmedDay == snap.day
-	if alert and threatPos then
-		if now() - d.lastGrowl > 8 then
-			d.lastGrowl = now()
-			Net.event("SoundCue"):FireAllClients(if calmed then "whine" else "growl", pos, 0.6)
+	local t = now()
+	if level == 2 and t >= d.nextGrowl then
+		d.nextGrowl = t + 7 + math.random() * 5
+		Net.event("SoundCue"):FireAllClients("growl", pos, 0.4)
+	elseif level == 3 and t >= d.nextWhine then
+		d.nextWhine = t + 6 + math.random() * 4
+		Net.event("SoundCue"):FireAllClients("whine", pos, 0.45)
+	end
+	if
+		t - d.lastBark > 4
+		and math.random() < DogMind.barkChance(d.mind, d.concealed, dt, DogMind.Default)
+	then
+		d.lastBark = t
+		bark(d, d.mind.agitation > 0.9, threatDist)
+	end
+	if d.petPrompt then
+		d.petPrompt.ActionText = if level >= 2 then "Calm" else "Pet"
+	end
+	if d.hidePrompt then
+		d.hidePrompt.Enabled = s.coat
+		d.hidePrompt.ActionText = if d.concealed then "Release" else "Hide together"
+	end
+
+	-- Hiding together under the coat lasts while you stay crouched in it.
+	if d.concealed then
+		if s.coat and s.crouch and dist < 8 then
+			d.concealLoose = 0
+		else
+			d.concealLoose += dt
+			if d.concealLoose > 1.5 then
+				d.concealed = false
+				Net.event("Notify"):FireClient(owner, "Caramelo slips out from under the coat.", "info")
+			end
 		end
-		if not calmed and threatDist < D.BarkRange and now() - d.lastBark > D.BarkCooldown then
-			d.lastBark = now()
-			NoiseService.emit(pos, "bark", owner)
-			Net.event("SoundCue"):FireAllClients("bark", pos, 1)
-			Net.event("Notify"):FireClient(owner, "Your dog barks at the dark. Calm it (G).", "warning")
+		if d.concealed and not d.hideTrained and level >= 2 and t - d.concealSince > 20 then
+			d.hideTrained = true
+			DogMind.train(d.mind, "sharedHiding", 0.1)
 		end
+	elseif level >= 3 and s.coat and s.crouch and dist < 15 and d.mind.sharedHiding >= 0.3 then
+		conceal(d) -- trained: he comes under the coat on his own
 	end
 
 	-- Automatic behaviours layered over commands.
@@ -261,9 +442,45 @@ local function tickDog(d: Dog, dt: number)
 	elseif d.auto == "bed" and (s.shelter == nil or d.ownerIdleFor < 1) then
 		d.auto = nil
 	end
+	-- Frightened: to you if you are close, otherwise to his bed.
+	if not d.concealed and level >= 3 then
+		if dist < 40 then
+			d.auto = "seek"
+		elseif bed then
+			d.auto = "bed"
+		end
+	elseif d.auto == "seek" and level < 3 then
+		d.auto = nil
+	end
 
-	local mode = d.auto or d.state
-	if mode == "hide" then
+	local mode = if d.concealed then "conceal" else (d.auto or d.state)
+	if mode == "conceal" then
+		-- Tucked against your front, under the coat's hem.
+		local look = flat(ownerRoot.CFrame.LookVector)
+		local spot = ownerPos + look * 1.4 - Vector3.new(0, 2, 0)
+		if flat(spot - pos).Magnitude > 1.2 then
+			walkTo(d, spot, true)
+			setPose(d, "stand")
+		else
+			hold(d)
+			if look.Magnitude > 0.1 then
+				d.root.CFrame = CFrame.lookAt(pos, pos + look)
+			end
+			setPose(d, "hide")
+		end
+	elseif mode == "seek" then
+		local spot = ownerPos + ownerRoot.CFrame.RightVector * 2 - Vector3.new(0, 2, 0)
+		if flat(spot - pos).Magnitude > 1.8 then
+			walkTo(d, spot, level >= 4)
+			setPose(d, "stand")
+		else
+			hold(d)
+			if threatPos then
+				faceToward(d, threatPos)
+			end
+			setPose(d, "hide")
+		end
+	elseif mode == "hide" then
 		local side = ownerRoot.CFrame.RightVector * 2
 		local spot = ownerPos + side - Vector3.new(0, 2, 0)
 		if flat(spot - pos).Magnitude > 1.5 then
@@ -381,7 +598,9 @@ local function createDog(player: Player, character: Model)
 				return
 			end
 			local d = dogs[player]
-			if d then
+			if d and d.mind.level >= 2 then
+				calmDog(d)
+			elseif d then
 				d.happyUntil = now() + 3
 				PlayerService.markPetted(player)
 				-- Stop and turn to face the player for the petting.
@@ -404,6 +623,46 @@ local function createDog(player: Player, character: Model)
 			end
 		end)
 	end
+	-- Hide together: you crouch in the coat and he crawls under its hem.
+	local hidePrompt: ProximityPrompt? = nil
+	if petPart then
+		local hp = Instance.new("ProximityPrompt")
+		hp.Name = "HidePrompt"
+		hp.ActionText = "Hide together"
+		hp.ObjectText = "Caramelo"
+		hp.HoldDuration = 0.5
+		hp.MaxActivationDistance = 8
+		hp.RequiresLineOfSight = false
+		hp.Style = Enum.ProximityPromptStyle.Custom
+		hp.Enabled = false
+		hp.Parent = petPart
+		hp.Triggered:Connect(function(who)
+			if who ~= player or not Net.allow(who, "dogHide", 2) then
+				return
+			end
+			local d = dogs[player]
+			local s = PlayerService.get(player)
+			if not d or not s then
+				return
+			end
+			if d.concealed then
+				d.concealed = false
+				Net.event("Notify"):FireClient(player, "You lift the coat. Caramelo stays close.", "info")
+			elseif not s.coat then
+				Net.event("Notify"):FireClient(player, "Put on the coat first (Q).", "info")
+			elseif not s.crouch then
+				Net.event("Notify"):FireClient(player, "Crouch first (C), then hide together.", "info")
+			else
+				conceal(d)
+				Net.event("Notify"):FireClient(
+					player,
+					"Caramelo crawls under the coat against you. Stay low. Stay quiet.",
+					"info"
+				)
+			end
+		end)
+		hidePrompt = hp
+	end
 	dogs[player] = {
 		owner = player,
 		rig = rig,
@@ -418,12 +677,24 @@ local function createDog(player: Player, character: Model)
 		lastPos = rig.root.Position,
 		stuckFor = 0,
 		lastBark = 0,
-		lastGrowl = 0,
-		calmedDay = 0,
 		ownerIdleFor = 0,
 		lastOwnerPos = Vector3.zero,
 		happyUntil = 0,
 		auto = nil,
+		mind = DogMind.new(),
+		concealed = false,
+		concealSince = 0,
+		concealLoose = 0,
+		nextGrowl = 0,
+		nextWhine = 0,
+		barkNoticeAt = 0,
+		seenKinds = {},
+		quietTrained = false,
+		hideTrained = false,
+		gustAt = -1e9,
+		threatDist = math.huge,
+		petPrompt = if petPart then petPart:FindFirstChild("PetPrompt") :: ProximityPrompt? else nil,
+		hidePrompt = hidePrompt,
 	}
 end
 
@@ -445,6 +716,14 @@ function DogService.start()
 		end
 	end)
 	Net.event("DogCommand").OnServerEvent:Connect(command)
+	-- A hard gust can make him jump at nothing.
+	WeatherService.onGust(function(strength: number)
+		if strength > 0.6 then
+			for _, d in dogs do
+				d.gustAt = now()
+			end
+		end
+	end)
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt: number)
 		acc += dt

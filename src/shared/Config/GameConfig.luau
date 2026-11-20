@@ -139,9 +139,7 @@ GameConfig.Dog = {
 	StuckSeconds = 4,
 	WalkSpeed = 15,
 	RunSpeed = 24,
-	AlertRange = 75,
-	BarkRange = 32,
-	BarkCooldown = 18,
+	-- Senses, mood, barking and calming live in Logic/DogMind.
 }
 
 -- The watched house on the hill (HillHouse; Maya lives in the lake house

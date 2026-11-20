@@ -21,6 +21,7 @@ local StoryProgress = require("../src/shared/Logic/StoryProgress")
 local Mystery = require("../src/shared/Logic/Mystery")
 local Breath = require("../src/shared/Logic/Breath")
 local FearEcology = require("../src/shared/Logic/FearEcology")
+local DogMind = require("../src/shared/Logic/DogMind")
 local AudioConfig = require("../src/shared/Config/AudioConfig")
 local GameConfig = require("../src/shared/Config/GameConfig")
 local CreatureConfig = require("../src/shared/Config/CreatureConfig")
@@ -825,6 +826,90 @@ describe("FearEcology", function()
 				truthy(CreatureConfig.Temperaments[name] ~= nil, kind .. "." .. name)
 			end
 		end
+	end)
+end)
+
+describe("DogMind", function()
+	local cfg = DogMind.Default
+	local all = { heard = true, seen = true, presence = true }
+	local none = { heard = false, seen = false, presence = false }
+	local alone =
+		{ ownerNear = false, concealed = false, mayaNear = false, inShelter = false, thunder = false }
+	it("senses closer things more strongly, and nothing he cannot sense", function()
+		local m = DogMind.new()
+		truthy(DogMind.signal(m, "Watcher", 10, all) > DogMind.signal(m, "Watcher", 60, all))
+		eq(DogMind.signal(m, "Watcher", 10, none), 0)
+		eq(DogMind.signal(m, "Watcher", 40, { heard = false, seen = false, presence = true }), 0)
+		truthy(DogMind.signal(m, "Wildlife", 10, all) < DogMind.signal(m, "Crawler", 10, all))
+	end)
+	it("familiarity softens a kind but never makes him fearless", function()
+		local m = DogMind.new()
+		local fresh = DogMind.signal(m, "Watcher", 20, all)
+		for _ = 1, 20 do
+			DogMind.learn(m, "Watcher")
+		end
+		local known = DogMind.signal(m, "Watcher", 20, all)
+		truthy(known < fresh and known > 0)
+		eq(DogMind.signal(m, "Dweller", 20, all), DogMind.signal(DogMind.new(), "Dweller", 20, all))
+	end)
+	it("rises quickly, settles slowly, and holds its level in the band", function()
+		local m = DogMind.new()
+		DogMind.step(m, 1, 1, cfg)
+		local up = m.agitation
+		local m2 = DogMind.new()
+		m2.agitation = 1
+		DogMind.step(m2, 0, 1, cfg)
+		truthy(up > 1 - m2.agitation)
+		local h = DogMind.new()
+		h.agitation = 0.45
+		DogMind.step(h, 0.45, 0.1, cfg)
+		eq(h.level, 2)
+		h.agitation = 0.33 -- below up[2] but above down[2]: still suspicious
+		DogMind.step(h, 0.33, 0.01, cfg)
+		eq(h.level, 2)
+		h.agitation = 0.2
+		DogMind.step(h, 0.2, 0.01, cfg)
+		eq(h.level, 1)
+	end)
+	it("barks only when panicked; training and the coat make it rare, not impossible", function()
+		local m = DogMind.new()
+		m.level = 3
+		eq(DogMind.barkChance(m, false, 1, cfg), 0)
+		m.level = 4
+		local raw = DogMind.barkChance(m, false, 1, cfg)
+		local hidden = DogMind.barkChance(m, true, 1, cfg)
+		truthy(hidden > 0 and hidden < raw * 0.2)
+		DogMind.train(m, "quietness", 1)
+		truthy(DogMind.barkChance(m, false, 1, cfg) < raw)
+	end)
+	it("calming helps step by step, less with a threat close", function()
+		local m = DogMind.new()
+		m.agitation = 1
+		local far = DogMind.calm(m, false, cfg)
+		truthy(far > 0 and far <= cfg.calmStep)
+		truthy(m.agitation > 0.5, "one calm never erases panic")
+		local m2 = DogMind.new()
+		m2.agitation = 1
+		truthy(DogMind.calm(m2, true, cfg) < far)
+	end)
+	it("his person, the coat and Maya soothe him; thunder unsettles him", function()
+		local m = DogMind.new()
+		local base = DogMind.target(m, 0.8, alone)
+		local held = DogMind.target(
+			m,
+			0.8,
+			{ ownerNear = true, concealed = true, mayaNear = false, inShelter = true, thunder = false }
+		)
+		truthy(held < base * 0.5)
+		truthy(
+			DogMind.target(
+				m,
+				0,
+				{ ownerNear = false, concealed = false, mayaNear = false, inShelter = false, thunder = true }
+			) > 0
+		)
+		eq(DogMind.state(m, true), "CONCEALED")
+		eq(DogMind.state(m, false), "RELAXED")
 	end)
 end)
 
