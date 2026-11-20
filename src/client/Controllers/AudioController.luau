@@ -228,6 +228,7 @@ function AudioController.start()
 	cueFolder.Parent = SoundService
 	hushGroup = Instance.new("SoundGroup")
 	hushGroup.Name = "Hushable"
+	hushGroup.Volume = 1 -- a new SoundGroup starts at 0.5
 	hushGroup.Parent = SoundService
 	for name, id in AudioConfig.Ambience :: { [string]: string } do
 		local s = if name == "fireplace" then nil else makeSound(id, cueFolder, true, 0)
