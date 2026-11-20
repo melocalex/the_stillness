@@ -389,6 +389,17 @@ WorldConfig.Terrain = terrain
 WorldConfig.Regions = regions
 WorldConfig.Sightlines = sightlines
 
+-- Atmosphere for a 3.2 km valley, on top of the time-of-day keyframes in
+-- GameConfig.Time.Lighting: distant ridges fade into a cool, damp haze so the
+-- far peaks read as far.
+WorldConfig.Atmosphere = {
+	Offset = 0.26, -- distant terrain blends toward the sky
+	HazeAdd = 0.55, -- added to the keyframe haze
+	DensityAdd = 0.03, -- added to the keyframe density
+	Tint = { 0.92, 0.97, 1.07 }, -- multiplies the atmosphere colour: cooler, bluer
+	Glare = 0.12,
+}
+
 WorldConfig.Forest = {
 	CellSize = 34, -- grove grid (studs)
 	MaxPerCell = 1.6, -- trees in a fully dense cell
