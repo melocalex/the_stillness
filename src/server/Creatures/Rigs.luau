@@ -8,6 +8,7 @@ local Assets = require(script.Parent.Parent.World.Assets)
 local Rigs = {}
 
 local dressDog: (Model, BasePart, BasePart) -> ()
+local dressCrawler: (Model, BasePart, BasePart, number) -> ()
 
 local function part(
 	model: Model,
@@ -47,10 +48,8 @@ local function motor(name: string, p0: BasePart, p1: BasePart, c0: CFrame, c1: C
 	return m
 end
 
-local function humanoid(model: Model, hipHeight: number, speed: number): Humanoid
-	local h = Instance.new("Humanoid")
-	h.RigType = Enum.HumanoidRigType.R15
-	h.HipHeight = hipHeight
+-- What every creature humanoid shares: it cannot die, trip, sit or swim.
+local function configure(h: Humanoid, speed: number)
 	h.WalkSpeed = speed
 	h.RequiresNeck = false
 	h.BreakJointsOnDeath = false
@@ -59,7 +58,6 @@ local function humanoid(model: Model, hipHeight: number, speed: number): Humanoi
 	h.MaxHealth = 1000
 	h.Health = 1000
 	h.AutoJumpEnabled = true
-	h.Parent = model
 	for _, st in
 		{
 			Enum.HumanoidStateType.Dead,
@@ -72,6 +70,14 @@ local function humanoid(model: Model, hipHeight: number, speed: number): Humanoi
 	do
 		h:SetStateEnabled(st, false)
 	end
+end
+
+local function humanoid(model: Model, hipHeight: number, speed: number): Humanoid
+	local h = Instance.new("Humanoid")
+	h.RigType = Enum.HumanoidRigType.R15
+	h.HipHeight = hipHeight
+	h.Parent = model
+	configure(h, speed)
 	return h
 end
 
@@ -93,8 +99,119 @@ export type Rig = { model: Model, root: BasePart, humanoid: Humanoid, eyeHeight:
 
 local DARK = Color3.fromRGB(10, 10, 12)
 
+-- Roblox's own R15 animations. Roblox owns them, so they play in any game
+-- without uploads (unlike animations bundled with Creator Store models).
+local ANIMS: { [string]: string } = {
+	idle = "rbxassetid://507766666",
+	walk = "rbxassetid://507777826",
+	run = "rbxassetid://507767714",
+}
+
+-- Idle, walk and run follow the humanoid's speed. Played on the server, so
+-- every client sees the same gait. Slow speeds play the walk slowed down,
+-- which suits a creature that is pacing a treeline.
+local function animate(h: Humanoid)
+	local animator = h:FindFirstChildOfClass("Animator") or Instance.new("Animator")
+	animator.Parent = h
+	local tracks: { [string]: AnimationTrack } = {}
+	for name, id in ANIMS do
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		local ok, track = pcall(function()
+			return animator:LoadAnimation(a)
+		end)
+		if ok and track then
+			track.Looped = true
+			tracks[name] = track
+		end
+	end
+	local current: AnimationTrack? = nil
+	local function play(name: string, speed: number)
+		local t = tracks[name]
+		if not t then
+			return
+		end
+		if current ~= t then
+			if current then
+				current:Stop(0.3)
+			end
+			t:Play(0.3)
+			current = t
+		end
+		t:AdjustSpeed(speed)
+	end
+	play("idle", 1)
+	h.Running:Connect(function(speed: number)
+		if speed < 0.5 then
+			play("idle", 1)
+		elseif speed < 14 then
+			play("walk", math.clamp(speed / 12, 0.35, 1.4))
+		else
+			play("run", math.clamp(speed / 22, 0.6, 1.4))
+		end
+	end)
+end
+
+-- A vetted rigged R15 creature from assets/StillnessAssets.rbxm, moved by
+-- its own Humanoid. Returns nil when the asset is missing or not a rig, so
+-- the part-built version below is used instead.
+local function fromAsset(name: string, scale: number, speed: number, tint: Color3?): Rig?
+	local m = Assets.clone(name)
+	if not m then
+		return nil
+	end
+	local h = m:FindFirstChildOfClass("Humanoid")
+	local r = m:FindFirstChild("HumanoidRootPart")
+	if not h or not r or not r:IsA("BasePart") then
+		m:Destroy()
+		return nil
+	end
+	m.Name = name
+	m.PrimaryPart = r
+	if scale ~= 1 then
+		local hip = h.HipHeight
+		m:ScaleTo(m:GetScale() * scale)
+		if math.abs(h.HipHeight - hip) < 1e-3 then
+			h.HipHeight = hip * scale
+		end
+	end
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			-- Assets.clone anchors everything; a creature must move.
+			d.Anchored = false
+			if d ~= r then
+				d.CanCollide = false
+				d.Massless = true
+			end
+		elseif d:IsA("SurfaceAppearance") and tint then
+			d.Color = tint
+		end
+	end
+	r.Transparency = 1
+	r.CanCollide = true
+	configure(h, speed)
+	local head = m:FindFirstChild("Head")
+	local base = r.Position.Y - r.Size.Y / 2
+	local eye = if head and head:IsA("BasePart") then head.Position.Y - base else r.Size.Y
+	-- LoadAnimation needs the model in the game; Creature.new parents it next.
+	task.defer(function()
+		while not m:IsDescendantOf(workspace) do
+			m.AncestryChanged:Wait()
+		end
+		animate(h)
+	end)
+	return { model = m, root = r, humanoid = h, eyeHeight = eye }
+end
+
+-- Near-black over the Watcher's skin texture: at night it reads as a shape.
+local WATCHER_TINT = Color3.fromRGB(58, 60, 64)
+
 -- Tall, thin, too still. About 11 studs.
 function Rigs.watcher(): Rig
+	local asset = fromAsset("Creature_Watcher", 0.8, 9, WATCHER_TINT)
+	if asset then
+		return asset
+	end
 	local m = Instance.new("Model")
 	m.Name = "Watcher"
 	local hip = 5
@@ -130,6 +247,10 @@ end
 
 -- Hunched, long-armed, low to the floor of dark rooms.
 function Rigs.dweller(): Rig
+	local asset = fromAsset("Creature_Dweller", 1, 10, nil)
+	if asset then
+		return asset
+	end
 	local m = Instance.new("Model")
 	m.Name = "Dweller"
 	local hip = 2.2
@@ -156,6 +277,51 @@ function Rigs.dweller(): Rig
 	return { model = m, root = r, humanoid = h, eyeHeight = 2.5 }
 end
 
+-- The vetted crawler mesh is a single unrigged MeshPart: it rides the part
+-- rig on a Motor6D ("MeshMotor") that the client bobs for a gait
+-- (Controllers/CreatureAnimator). Yaw turns the mesh to face -Z.
+local CRAWLER_SCALE = 0.8
+local CRAWLER_YAW = 0
+
+dressCrawler = function(m: Model, r: BasePart, body: BasePart, hip: number)
+	local mesh = Assets.clone("Creature_Crawler")
+	local meshPart = mesh and mesh:FindFirstChildWhichIsA("MeshPart", true)
+	if not mesh or not meshPart then
+		if mesh then
+			mesh:Destroy()
+		end
+		return
+	end
+	mesh:ScaleTo(mesh:GetScale() * CRAWLER_SCALE)
+	for _, d in mesh:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = false
+			d.Massless = true
+		end
+	end
+	body.CFrame = r.CFrame * CFrame.new(0, 0.3, 0)
+	local groundY = r.Position.Y - r.Size.Y / 2 - hip
+	mesh:PivotTo(CFrame.new(mesh:GetPivot().Position) * CFrame.Angles(0, math.rad(CRAWLER_YAW), 0))
+	local cf, size = mesh:GetBoundingBox()
+	mesh:PivotTo(
+		mesh:GetPivot() + (Vector3.new(r.Position.X, groundY + size.Y / 2, r.Position.Z) - cf.Position)
+	)
+	mesh.Parent = m
+	local mm = Instance.new("Motor6D")
+	mm.Name = "MeshMotor"
+	mm.Part0 = body
+	mm.Part1 = meshPart
+	mm.C0 = body.CFrame:ToObjectSpace(meshPart.CFrame)
+	mm.Parent = body
+	for _, child in m:GetChildren() do
+		if child:IsA("BasePart") and child ~= r then
+			child.Transparency = 1
+			child.CastShadow = false
+		end
+	end
+	m:SetAttribute("MeshCrawler", true)
+end
+
 -- Low and fast, close to the ground.
 function Rigs.crawler(): Rig
 	local m = Instance.new("Model")
@@ -180,6 +346,7 @@ function Rigs.crawler(): Rig
 		end
 	end
 	local h = humanoid(m, hip, 12)
+	dressCrawler(m, r, body, hip)
 	return { model = m, root = r, humanoid = h, eyeHeight = 1.4 }
 end
 

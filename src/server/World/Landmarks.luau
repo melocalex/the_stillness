@@ -6,6 +6,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
+local Assets = require(script.Parent.Assets)
 local Builder = require(script.Parent.Builder)
 local Terrain = require(script.Parent.Terrain)
 
@@ -469,6 +470,35 @@ function Landmarks.oldOne(parent: Instance): Model
 		})
 	end
 	m.PrimaryPart = body
+	-- The Watcher mesh, vast and black, replaces the stand-in shape. The
+	-- parts stay (Body is the pivot) but are marked Skeleton so OldOneService
+	-- never fades them in.
+	local mesh = Assets.clone("Creature_Watcher")
+	if mesh then
+		for _, d in mesh:GetDescendants() do
+			if d:IsA("Humanoid") or (d:IsA("BasePart") and d.Name == "HumanoidRootPart") then
+				d:Destroy()
+			end
+		end
+		local _, size = mesh:GetBoundingBox()
+		mesh:ScaleTo(mesh:GetScale() * (74 / size.Y))
+		local cf, scaled = mesh:GetBoundingBox()
+		mesh:PivotTo(mesh:GetPivot() + ((o * CFrame.new(0, -4 + scaled.Y / 2, 0)).Position - cf.Position))
+		for _, d in mesh:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Color = black
+				d.CastShadow = false
+			elseif d:IsA("SurfaceAppearance") then
+				d.Color = Color3.fromRGB(14, 14, 16)
+			end
+		end
+		for _, d in m:GetChildren() do
+			if d:IsA("BasePart") then
+				d:SetAttribute("Skeleton", true)
+			end
+		end
+		mesh.Parent = m
+	end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Transparency = 1

@@ -129,6 +129,90 @@
       "notes": "0 scripts; tinted caramel; seen following and being petted in Studio 2026-11-20"
     },
     {
+      "name": "Creature_Watcher",
+      "category": "model",
+      "title": "R15 monster Slum Tree",
+      "source_url": "https://create.roblox.com/store/asset/18629586862",
+      "author": "BotDrone_Studios",
+      "license": "Roblox Creator Store (free; use inside Roblox experiences)",
+      "local_path": "assets/StillnessAssets.rbxm",
+      "roblox_asset_id": 18629586862,
+      "attribution_required": false,
+      "states": {
+        "discovered": true,
+        "license_verified": true,
+        "downloaded": true,
+        "processed": true,
+        "imported": true,
+        "integrated": true,
+        "tested": false
+      },
+      "notes": "0 scripts; R15 rig with 15 joints; Watcher (0.8x, tinted near-black) and Old One (74 studs, black)"
+    },
+    {
+      "name": "Creature_Dweller",
+      "category": "model",
+      "title": "Wendigo",
+      "source_url": "https://create.roblox.com/store/asset/15020057104",
+      "author": "iamsocool123e",
+      "license": "Roblox Creator Store (free; use inside Roblox experiences)",
+      "local_path": "assets/StillnessAssets.rbxm",
+      "roblox_asset_id": 15020057104,
+      "attribution_required": false,
+      "states": {
+        "discovered": true,
+        "license_verified": true,
+        "downloaded": true,
+        "processed": true,
+        "imported": true,
+        "integrated": true,
+        "tested": false
+      },
+      "notes": "0 scripts; R15 rig with 15 joints; the Dweller"
+    },
+    {
+      "name": "Creature_Crawler",
+      "category": "model",
+      "title": "Crawler monster",
+      "source_url": "https://create.roblox.com/store/asset/103037817796984",
+      "author": "IAmASwedishMale",
+      "license": "Roblox Creator Store (free; use inside Roblox experiences)",
+      "local_path": "assets/StillnessAssets.rbxm",
+      "roblox_asset_id": 103037817796984,
+      "attribution_required": false,
+      "states": {
+        "discovered": true,
+        "license_verified": true,
+        "downloaded": true,
+        "processed": true,
+        "imported": true,
+        "integrated": true,
+        "tested": false
+      },
+      "notes": "0 scripts; single mesh, 0.8x, client gait bob"
+    },
+    {
+      "name": "Axe",
+      "category": "model",
+      "title": "Axe Tool",
+      "source_url": "https://create.roblox.com/store/asset/87307912628259",
+      "author": "Elio_Bro gruppe",
+      "license": "Roblox Creator Store (free; use inside Roblox experiences)",
+      "local_path": "assets/StillnessAssets.rbxm",
+      "roblox_asset_id": 87307912628259,
+      "attribution_required": false,
+      "states": {
+        "discovered": true,
+        "license_verified": true,
+        "downloaded": true,
+        "processed": true,
+        "imported": true,
+        "integrated": true,
+        "tested": false
+      },
+      "notes": "0 scripts; contains a Tool; replaces the procedural axe"
+    },
+    {
       "name": "Deer",
       "category": "model",
       "title": "Whitetail Deer",

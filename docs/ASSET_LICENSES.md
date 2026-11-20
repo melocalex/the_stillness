@@ -46,8 +46,15 @@ checked. Nothing was purchased.
 | Bookshelf | 56449804 | Bookshelf | Roblox | 0 | 96 | beside the fireplace |
 | Bed | 98266706858536 | Realistic Roblox Wooden Bed | THExWRATHxKING | 0 | 3,368 | scaled 0.8x |
 | Lantern | 9666312574 | Realistic Lantern | arnavmahesh | 0 | 2,380 | on the mantel |
+| Creature_Watcher | 18629586862 | R15 monster Slum Tree | BotDrone_Studios | 0 | 8,086 | R15 rig, scaled 0.8x (about 11 studs), skin tinted near-black; also the Old One, scaled to 74 studs and blacked out |
+| Creature_Dweller | 15020057104 | Wendigo | iamsocool123e | 0 | 13,754 | R15 rig, unchanged (deer skull, ribcage) |
+| Creature_Crawler | 103037817796984 | Crawler monster | IAmASwedishMale | 0 | 20,000 | single unrigged mesh, scaled 0.8x, rides the crawler part rig |
+| Axe | 87307912628259 | Axe Tool | Elio_Bro gruppe | 0 | 4,752 | the player's axe (Tool inside) |
 
-Everything else (terrain, cabin, houses, town, rocks, bushes, creatures) is
+Creature walk, run and idle use Roblox's own default R15 animations
+(507777826, 507767714, 507766666), which play in any experience.
+
+Everything else (terrain, cabin, houses, town, rocks, bushes) is
 original procedural geometry built by the code in `src/server/World` and
 `src/server/Creatures`.
 

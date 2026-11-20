@@ -20,6 +20,10 @@ local picks = {
 	Bookshelf = 56449804,
 	Bed = 98266706858536,
 	Lantern = 9666312574,
+	Creature_Watcher = 18629586862,
+	Creature_Dweller = 15020057104,
+	Creature_Crawler = 103037817796984,
+	Axe = 87307912628259,
 }
 for name, id in picks do
 	local ok, objs = pcall(function()

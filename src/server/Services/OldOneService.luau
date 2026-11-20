@@ -25,7 +25,7 @@ end
 
 local function fade(m: Model, to: number, seconds: number)
 	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") then
+		if d:IsA("BasePart") and d:GetAttribute("Skeleton") ~= true then
 			TweenService:Create(d, TweenInfo.new(seconds), { Transparency = to }):Play()
 		end
 	end
