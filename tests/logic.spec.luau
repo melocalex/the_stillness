@@ -25,6 +25,7 @@ local DogMind = require("../src/shared/Logic/DogMind")
 local ChaosField = require("../src/shared/Logic/ChaosField")
 local Dissonance = require("../src/shared/Logic/Dissonance")
 local DissonanceConfig = require("../src/shared/Config/DissonanceConfig")
+local WorldConfig = require("../src/shared/Config/WorldConfig")
 local AudioConfig = require("../src/shared/Config/AudioConfig")
 local GameConfig = require("../src/shared/Config/GameConfig")
 local CreatureConfig = require("../src/shared/Config/CreatureConfig")
@@ -782,6 +783,17 @@ end
 local function idx(name: string): number
 	return ChaosField.levelIndex(LEVELS, name)
 end
+
+describe("ChaosField and the world", function()
+	it("covers the whole terrain and keeps the cabin at a sector's centre", function()
+		local c = DissonanceConfig.Field
+		truthy(c.halfSize >= WorldConfig.HalfSize, "field smaller than the terrain")
+		local cols = math.ceil(2 * c.halfSize / c.sectorSize)
+		eq(cols % 2, 1, "an odd sector count centres the cabin")
+		local corner = math.sqrt(2) * WorldConfig.HalfSize
+		truthy(DissonanceConfig.Modes.REGIONAL.range >= corner, "REGIONAL misses the valley's corners")
+	end)
+end)
 
 describe("ChaosField", function()
 	it("covers the map with sectors and maps positions to them", function()

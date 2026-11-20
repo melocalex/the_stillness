@@ -11,9 +11,10 @@ local DissonanceConfig = {}
 
 DissonanceConfig.Field = {
 	sectorSize = 200, -- studs per grid sector
-	-- The field covers -halfSize..halfSize on X and Z (the map is +-1000).
-	-- 11 sectors a side put the cabin (0, 0) in the middle of one sector.
-	halfSize = 1100,
+	-- The field covers -halfSize..halfSize on X and Z (the valley terrain is
+	-- +-1600, WorldConfig.HalfSize). 17 sectors a side put the cabin (0, 0)
+	-- in the middle of one sector.
+	halfSize = 1700,
 	tickSeconds = 1,
 	baseline = 7, -- CEU on a quiet afternoon
 	nightLift = 3, -- extra background CEU at full night
@@ -61,7 +62,7 @@ DissonanceConfig.Modes = {
 		signature = 0.35,
 	},
 	REGIONAL = {
-		range = 1400,
+		range = 2300, -- reaches the valley's corners from the cabin
 		noise = 6,
 		update = 4,
 		quantize = 5,
