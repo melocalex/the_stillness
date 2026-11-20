@@ -309,6 +309,12 @@ local function animate(m: Model, dt: number)
 		neck = CFrame.Angles(math.rad(-18), 0, 0)
 		tail = CFrame.Angles(math.rad(-25), 0, 0)
 		wag = 0.02
+	elseif pose == "track" then
+		-- Nose to the ground, tail up and busy, a small sniffing bob.
+		body = CFrame.Angles(math.rad(-6), 0, 0)
+		neck = CFrame.new(0, -0.25, -0.1) * CFrame.Angles(math.rad(34 + math.sin(t * 9) * 4), 0, 0)
+		tail = CFrame.Angles(math.rad(-30), 0, 0)
+		wag = 0.5
 	elseif pose == "happy" then
 		-- Being petted: sit, head up toward the player, tail going.
 		wag = 1.1

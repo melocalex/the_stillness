@@ -93,8 +93,9 @@ function InputController.start()
 	key("StillPack", { Enum.KeyCode.P, Enum.KeyCode.DPadLeft }, function()
 		Panels.toggle("Pack")
 	end)
+	-- The Life Journal; observations live in its MYSTERIES tab.
 	key("StillJournal", { Enum.KeyCode.J, Enum.KeyCode.DPadRight }, function()
-		Panels.toggle("Journal")
+		Panels.toggle("Life")
 	end)
 	key("StillBuild", { Enum.KeyCode.B, Enum.KeyCode.DPadDown }, function()
 		if onBuildToggle then

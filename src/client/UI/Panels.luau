@@ -264,6 +264,14 @@ local function refreshDog()
 	end
 end
 
+-- Another UI module adds its own panel under the one-panel-at-a-time rule.
+function Panels.register(name: string, panel: Frame, refresh: (() -> ())?)
+	panels[name] = panel
+	if refresh then
+		refreshers[name] = refresh
+	end
+end
+
 function Panels.toggle(name: string)
 	if current == name then
 		Panels.close()
