@@ -21,6 +21,151 @@ type Joints = {
 
 local cache: { [Model]: Joints } = {}
 
+-- The mesh dog (Caramelo) plays the asset's own walk/idle keyframe
+-- sequences when the client can register them (Studio), and otherwise swings
+-- its leg bones procedurally.
+local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
+local TweenService = game:GetService("TweenService")
+
+type MeshAnim = {
+	walk: AnimationTrack?,
+	idle: AnimationTrack?,
+	bones: { [string]: Bone },
+	rest: { [string]: CFrame },
+}
+local meshCache: { [Model]: MeshAnim } = {}
+
+local function heart(m: Model)
+	local root = m.PrimaryPart
+	if not root then
+		return
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(60, 60)
+	gui.StudsOffset = Vector3.new(0, 3, 0)
+	gui.AlwaysOnTop = true
+	gui.Adornee = root
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Text = "♥"
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(255, 120, 110)
+	label.Font = Enum.Font.GothamBold
+	label.Parent = gui
+	gui.Parent = root
+	local info = TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(gui, info, { StudsOffset = Vector3.new(0, 5.5, 0) }):Play()
+	TweenService:Create(label, info, { TextTransparency = 1 }):Play()
+	task.delay(1.7, function()
+		gui:Destroy()
+	end)
+end
+
+local function meshAnim(m: Model): MeshAnim?
+	if m:GetAttribute("MeshDog") ~= true then
+		return nil
+	end
+	local existing = meshCache[m]
+	if existing then
+		return existing
+	end
+	local mesh = m:FindFirstChild("DogMesh")
+	if not mesh then
+		return nil
+	end
+	local rec: MeshAnim = { bones = {}, rest = {} }
+	for _, d in mesh:GetDescendants() do
+		if d:IsA("Bone") then
+			rec.bones[d.Name] = d
+			rec.rest[d.Name] = d.Transform
+		end
+	end
+	local controller = mesh:FindFirstChildWhichIsA("AnimationController", true)
+	if controller then
+		local animator: Animator? = controller:FindFirstChildOfClass("Animator")
+		if not animator then
+			local created = Instance.new("Animator")
+			created.Parent = controller
+			animator = created
+		end
+		for _, kfs in mesh:GetDescendants() do
+			if kfs:IsA("KeyframeSequence") then
+				local ok, id = pcall(function()
+					return KeyframeSequenceProvider:RegisterKeyframeSequence(kfs)
+				end)
+				if ok and animator then
+					local anim = Instance.new("Animation")
+					anim.AnimationId = id :: any
+					local loaded, track = pcall(function()
+						return (animator :: Animator):LoadAnimation(anim)
+					end)
+					if loaded and track then
+						track.Looped = true
+						if string.find(kfs.Name, "Walk") then
+							rec.walk = track
+						else
+							rec.idle = track
+						end
+					end
+				end
+			end
+		end
+	end
+	meshCache[m] = rec
+	m:GetAttributeChangedSignal("PettedAt"):Connect(function()
+		heart(m)
+	end)
+	m.Destroying:Once(function()
+		meshCache[m] = nil
+	end)
+	return rec
+end
+
+local function animateMesh(m: Model, speed: number, pose: string, phase: number)
+	local rec = meshAnim(m)
+	if not rec then
+		return
+	end
+	local moving = speed > 0.8 and pose ~= "sit" and pose ~= "sleep" and pose ~= "hide"
+	if rec.walk or rec.idle then
+		if moving then
+			if rec.walk and not rec.walk.IsPlaying then
+				rec.walk:Play(0.25)
+			end
+			if rec.walk then
+				rec.walk:AdjustSpeed(math.clamp(speed / 9, 0.6, 2.2))
+			end
+			if rec.idle and rec.idle.IsPlaying then
+				rec.idle:Stop(0.25)
+			end
+		else
+			if rec.walk and rec.walk.IsPlaying then
+				rec.walk:Stop(0.25)
+			end
+			if rec.idle and not rec.idle.IsPlaying then
+				rec.idle:Play(0.4)
+			end
+		end
+		return
+	end
+	-- Procedural fallback: swing the leg bones.
+	local swing = if moving then math.min(speed / 12, 1) * 0.6 else 0
+	local legs: { [string]: number } = {
+		["DEF-thigh.L"] = 0,
+		["DEF-thigh.R"] = math.pi,
+		["DEF-front_thigh.L"] = math.pi,
+		["DEF-front_thigh.R"] = 0,
+	}
+	for name: string, offset: number in legs do
+		local bone = rec.bones[name]
+		if bone then
+			bone.Transform = (rec.rest[name] or CFrame.new())
+				* CFrame.Angles(math.sin(phase + offset) * swing, 0, 0)
+		end
+	end
+end
+
 local function joints(m: Model): Joints
 	local j = cache[m]
 	if j then
@@ -63,6 +208,7 @@ local function animate(m: Model, dt: number)
 	local speed = Vector3.new(v.X, 0, v.Z).Magnitude
 	local pose = (m:GetAttribute("Pose") :: string?) or "stand"
 	j.phase += dt * (2 + speed * 0.9)
+	animateMesh(m, speed, pose, j.phase)
 	local t = os.clock()
 
 	local body, neck, tail = CFrame.new(), CFrame.new(), CFrame.new()

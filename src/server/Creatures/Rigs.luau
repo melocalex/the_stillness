@@ -3,7 +3,11 @@
 -- HumanoidRootPart, a Humanoid that cannot die, and massless visual parts
 -- joined with Motor6Ds so clients can animate them procedurally.
 
+local Assets = require(script.Parent.Parent.World.Assets)
+
 local Rigs = {}
+
+local dressDog: (Model, BasePart, BasePart) -> ()
 
 local function part(
 	model: Model,
@@ -179,6 +183,63 @@ function Rigs.crawler(): Rig
 	return { model = m, root = r, humanoid = h, eyeHeight = 1.4 }
 end
 
+-- Caramelo: the vetted rigged dog mesh (assets/StillnessAssets.rbxm, "Dog"),
+-- tinted to a caramel street-dog coat and welded over the part rig. The part
+-- rig stays as the invisible physics/animation skeleton, so poses applied to
+-- its Root motor (sit, sleep, hide) still move the mesh. Falls back to the
+-- visible part-built dog when the asset is missing.
+local CARAMEL = Color3.fromRGB(255, 196, 138)
+
+dressDog = function(m: Model, r: BasePart, body: BasePart)
+	local mesh = Assets.clone("Dog")
+	if not mesh then
+		return
+	end
+	mesh.Name = "DogMesh"
+	mesh:ScaleTo(mesh:GetScale() * 1.2)
+	local meshPart: MeshPart? = nil
+	for _, d in mesh:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = false
+			d.Massless = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			if d:IsA("MeshPart") then
+				meshPart = d
+			end
+		elseif d:IsA("SurfaceAppearance") then
+			d.Color = CARAMEL
+		end
+	end
+	if not meshPart then
+		mesh:Destroy()
+		return
+	end
+	-- Place the mesh standing on the ground under the rig, facing -Z.
+	body.CFrame = r.CFrame * CFrame.new(0, 0.1, 0)
+	local groundY = r.Position.Y - r.Size.Y / 2 - 1.5 -- minus the dog's HipHeight
+	local cf, size = mesh:GetBoundingBox()
+	mesh:PivotTo(
+		mesh:GetPivot() + (Vector3.new(r.Position.X, groundY + size.Y / 2, r.Position.Z - 0.2) - cf.Position)
+	)
+	mesh.Parent = m
+	local weld = Instance.new("Weld")
+	weld.Name = "MeshWeld"
+	weld.Part0 = body
+	weld.Part1 = meshPart
+	weld.C0 = body.CFrame:ToObjectSpace(meshPart.CFrame)
+	weld.Parent = meshPart
+	-- Hide the stand-in parts; keep them as the skeleton.
+	for _, child in m:GetChildren() do
+		if child:IsA("BasePart") and child ~= r then
+			child.Transparency = 1
+			child.CastShadow = false
+		end
+	end
+	m:SetAttribute("MeshDog", true)
+end
+
 -- A golden dog: body, head with snout and ears, four legs, tail.
 function Rigs.dog(): Rig
 	local m = Instance.new("Model")
@@ -239,6 +300,7 @@ function Rigs.dog(): Rig
 	)
 	local h = humanoid(m, hip, 15)
 	h.JumpPower = 40
+	dressDog(m, r, body)
 	return { model = m, root = r, humanoid = h, eyeHeight = 2.4 }
 end
 

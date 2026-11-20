@@ -368,7 +368,7 @@ local function createDog(player: Player, character: Model)
 		local p = Instance.new("ProximityPrompt")
 		p.Name = "PetPrompt"
 		p.ActionText = "Pet"
-		p.ObjectText = "Your dog"
+		p.ObjectText = "Caramelo"
 		p.HoldDuration = 0.4
 		p.MaxActivationDistance = 7
 		p.RequiresLineOfSight = false
@@ -382,7 +382,14 @@ local function createDog(player: Player, character: Model)
 			if d then
 				d.happyUntil = now() + 3
 				PlayerService.markPetted(player)
+				d.model:SetAttribute("PettedAt", workspace:GetServerTimeNow())
 				Net.event("SoundCue"):FireAllClients("whine", d.root.Position, 0.3)
+				local lines = {
+					"Caramelo leans into your hand. His tail won't stop.",
+					"Caramelo rolls onto his back for belly rubs.",
+					"Caramelo sighs and presses his head against your knee.",
+				}
+				Net.event("Notify"):FireClient(player, lines[math.random(1, #lines)], "info")
 			end
 		end)
 	end
