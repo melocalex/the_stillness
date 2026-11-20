@@ -2,10 +2,11 @@
 -- Specs for the valley height function (src/shared/Logic/Heightfield.luau)
 -- against the gameplay that depends on world coordinates. The pre-rebuild
 -- height function runs alongside as a control where a check is about the
--- old "arena" shape.
+-- old "arena" shape. Run: lune run tests/terrain.spec
 
+local process = require("@lune/process")
 local t = require("./harness")
-local describe, it, eq, truthy = t.describe, t.it, t.eq, t.truthy
+local describe, it, eq, truthy, falsy = t.describe, t.it, t.eq, t.truthy, t.falsy
 
 local WorldConfig = require("../src/shared/Config/WorldConfig")
 local Heightfield = require("../src/shared/Logic/Heightfield")
@@ -218,12 +219,13 @@ describe("Valley shape", function()
 
 	it("keeps snow and alpine walls out of the playable square", function()
 		local P = W.PlayableRadius
-		for x = -P, P, 10 do
-			for z = -P, P, 10 do
-				truthy(
-					h(x, z) < field.snowLine(x, z) - 10,
-					string.format("snow inside the play area at %d,%d", x, z)
-				)
+		-- The writer's own rule, at slope 0 (where snow patches are likeliest),
+		-- plus a margin below the line itself.
+		for x = -P, P, 8 do
+			for z = -P, P, 8 do
+				local y = h(x, z)
+				falsy(field.isSnow(x, z, y, 0), string.format("snow inside the play area at %d,%d", x, z))
+				truthy(y < field.snowLine(x, z) - 25, string.format("close to the snow line at %d,%d", x, z))
 			end
 		end
 		local legacyMax = -math.huge
@@ -386,3 +388,7 @@ describe("Gameplay geometry", function()
 		end
 	end)
 end)
+
+if not t.report() then
+	process.exit(1)
+end

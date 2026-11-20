@@ -405,7 +405,6 @@ WorldConfig.Forest = {
 	MaxPerCell = 1.6, -- trees in a fully dense cell
 	MinSpacing = 6, -- between trunks
 	Treeline = 150, -- no trees above this height
-	FrostLine = 135, -- frosted pines above this height
 	FarTrees = 420, -- shadowless scenery trees outside the play area
 	Rocks = 220,
 	Bushes = 380,

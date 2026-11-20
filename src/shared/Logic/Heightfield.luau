@@ -1,4 +1,5 @@
 --!strict
+--!native
 -- The Pinehaven valley as one deterministic height function. Pure: takes the
 -- world config as a value, requires nothing and uses only math (math.noise is
 -- part of Luau), so Lune tests and the image tool run exactly what the server
@@ -87,6 +88,8 @@ export type Field = {
 	-- Fixed pad height under (x, z) when inside a building pad's core.
 	padHeight: (x: number, z: number) -> number?,
 	snowLine: (x: number, z: number) -> number,
+	-- Whether the surface at (x, z) with height h and slope (rise per stud) is snow.
+	isSnow: (x: number, z: number, h: number, slope: number) -> boolean,
 	inMeadow: (x: number, z: number) -> boolean,
 }
 
@@ -456,6 +459,17 @@ function Heightfield.new(cfg: Config): Field
 		return T.SnowLine + n(x / 130, z / 130, 10) * 50
 	end
 
+	-- The one snow rule (the voxel writer and the specs both use it): snow
+	-- above the snow line unless the slope is a rock face, plus lingering
+	-- patches on gentle ground up to 20 studs below it.
+	local function isSnow(x: number, z: number, h: number, slope: number): boolean
+		local line = snowLine(x, z)
+		if h > line then
+			return slope <= 1.25
+		end
+		return h > line - 20 and slope < 0.7 and math.noise(x / 36, z / 36, 33.1) > 0.3
+	end
+
 	local function inMeadow(x: number, z: number): boolean
 		for _, m in cfg.Meadows do
 			if (x - m.x) ^ 2 + (z - m.z) ^ 2 < m.r * m.r then
@@ -476,6 +490,7 @@ function Heightfield.new(cfg: Config): Field
 		pathDistance = pathDistance,
 		padHeight = padHeight,
 		snowLine = snowLine,
+		isSnow = isSnow,
 		inMeadow = inMeadow,
 	}
 end
