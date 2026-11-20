@@ -369,6 +369,8 @@ local function createDog(player: Player, character: Model)
 		p.Name = "PetPrompt"
 		p.ActionText = "Pet"
 		p.ObjectText = "Caramelo"
+		-- Own key, so standing next to the dog never hides other E prompts.
+		p.KeyboardKeyCode = Enum.KeyCode.T
 		p.HoldDuration = 0.4
 		p.MaxActivationDistance = 7
 		p.RequiresLineOfSight = false
