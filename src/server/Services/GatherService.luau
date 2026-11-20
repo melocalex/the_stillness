@@ -166,12 +166,30 @@ local function setup(node: Instance)
 	if not kind or not part or not kindName then
 		return
 	end
+	if kindName == "Tree" and part:IsA("BasePart") then
+		-- A bright ribbon around the trunk marks the trees you can chop.
+		local bottomY = part.Position.Y - part.Size.X / 2
+		local ribbon = Instance.new("Part")
+		ribbon.Name = "Ribbon"
+		ribbon.Shape = Enum.PartType.Cylinder
+		ribbon.Size = Vector3.new(0.7, 3.6, 3.6)
+		ribbon.CFrame = CFrame.new(part.Position.X, bottomY + 3.6, part.Position.Z)
+			* CFrame.Angles(0, 0, math.rad(90))
+		ribbon.Color = Color3.fromRGB(235, 110, 30)
+		ribbon.Material = Enum.Material.Fabric
+		ribbon.Anchored = true
+		ribbon.CanCollide = false
+		ribbon.CanQuery = false
+		ribbon.CanTouch = false
+		ribbon.CastShadow = false
+		ribbon.Parent = node
+	end
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GatherPrompt"
 	prompt.ActionText = kind.action
-	prompt.ObjectText = kind.object
+	prompt.ObjectText = if kindName == "Tree" then "Marked tree" else kind.object
 	prompt.HoldDuration = kind.hold
-	prompt.MaxActivationDistance = if kindName == "Tree" then 9 else 8
+	prompt.MaxActivationDistance = if kindName == "Tree" then 13 else 9
 	prompt.RequiresLineOfSight = false
 	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt.Parent = part
