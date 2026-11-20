@@ -62,6 +62,21 @@ Mark each item only after seeing it in a Studio playtest.
 ### Story
 - [ ] Objectives advance in order and can be completed late without soft-locks
 
+### Before/after shots
+
+`tools/studio/shot-rig/build.sh <commit> <out.rbxlx>` builds any commit
+with a screenshot rig added. The rig is a tool and never ships in the
+game. In the built place:
+
+- **Clock.** The server fast-forwards to 11:00 and freezes the clock.
+- **Cameras.** After you click Play in the menu, the client hides the
+  HUD and cycles five cameras, 14 s each. The cameras are: the cabin's
+  north yard toward Maya's house, the lake shore, Radio Hill toward the
+  north, the porch toward the south-east and a high aerial view.
+- **Output.** Each camera prints `[Shot] <name>` to the output.
+
+Build two commits, open each in Studio and screenshot the same camera.
+
 ## Performance
 
 Report measured numbers only (Studio **View > Stats / MicroProfiler**).

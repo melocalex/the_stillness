@@ -104,21 +104,38 @@ noise; the authored shapes stay. The layers, from broad to fine:
 [`World/Terrain.luau`](../src/server/World/Terrain.luau) writes the voxels
 at server start:
 
-- **Height grid.** It evaluates the height once per 4-stud column into a
-  grid of 640,000 columns. Slopes come from the neighbouring columns.
-- **Materials.** Snow lies above about 240 (±25) and rock covers slopes
-  steeper than 1.1. Bare ground and rock cover the alpine zone (above
-  175). The shore is sand, pebbles or mud by stretch. Paths are ground,
-  the bog is mud and the meadows and cabin yard are grass. Elsewhere the
-  forest floor mixes leafy grass, grass and ground.
+- **Height grid.** The grid holds 640,000 columns, 4 studs apart, and
+  slopes come from the neighbouring columns. Inside the play area every
+  column is evaluated. Outside it, only every other column in each
+  direction is evaluated (an 8-stud lattice) and the rest are filled
+  between them. That is 350,512 evaluations in all.
+- **Materials.** `Heightfield.isSnow` holds the snow rule, shared with
+  the specs: snow above the snow line (about 240, ±25) unless the slope
+  is a rock face, and lingering patches on gentle ground up to 20 below
+  it. Rock covers slopes steeper than 1.1, and bare ground and rock cover
+  the alpine zone (above 175). The shore is sand, pebbles or mud by
+  stretch. Paths are ground, the bog is mud and the meadows and cabin
+  yard are grass. Elsewhere the forest floor mixes leafy grass, grass and
+  ground.
 - **Chunks.** It writes 64-stud chunks, each only over its own height
-  band. Chunks outside the play area get a thin band and no rock floor.
-  This comes to about 8.4 million voxels, against 22 to 27 million if
-  every band started below the water line.
+  band. The band reaches down to the lowest column bordering the chunk,
+  so a steep drop next door never opens a slit under it; without that,
+  72 far chunks would show one. Chunks outside the play area get a thin
+  band and no rock floor. This comes to about 8.7 million voxels, against
+  22 to 27 million if every band started below the water line.
 - **Yielding.** It yields on a 0.1 s work budget, not after every chunk.
+- **Native code.** `Heightfield` and `Terrain` carry `--!native`.
 
 Extent: `HalfSize` 1600 (terrain from -1600 to 1600). `PlayableRadius` 860
 is unchanged.
+
+**Cost, measured only outside Roblox.** In Lune on the reference Mac,
+with the machine under load (load average about 9), the height grid took
+1.6 s. Building the voxel tables, with a stand-in for the material rules,
+took another 0.8 s. That is a lower bound. It leaves out `WriteVoxels`,
+the real material lookups, the forest and everything else in
+`World.build`. The server prints the real figures (`[Terrain]`,
+`[Forest]`, `[World] built in`). The old 2 km world took 6.7 s in Studio.
 
 ## Paths
 
@@ -159,8 +176,9 @@ the view of the Old One spots.
   thicker, meadows and the shore thinner, and the cabin keeps its
   clearing. Trunks stand at least 6 studs apart.
 - **Species by biome.** Cedar, birch and oak grow by the water. Cedar and
-  big ponderosa fill the deep forest. Frosted pines grow only near the
-  treeline (above 135); no trees grow above 150.
+  big ponderosa fill the deep forest. Ponderosa and cedar grow up high; no
+  trees grow above 150. The snow-laden pine asset is not used, because no
+  tree grows near snow.
 - **Exclusions.** No trees on building pads, trails and roads, the lake
   and its beach, reserved regions, cliffs or the sightlines.
 - **Understory.** Bushes grow at grove edges and fern patches in dense
@@ -228,7 +246,10 @@ play area and ramped up at the whole boundary.
 
    A third argument renders a window around the cabin, for example
    `lune run tools/terrain/render_map /tmp/map 500 900` for the play area.
-4. Check it in Studio at ground level. Terrain exists only after the
+4. Check it in Studio at ground level. For before/after shots from
+   identical cameras, build both commits with
+   `tools/studio/shot-rig/build.sh <commit> <out.rbxlx>` (see
+   [TESTING.md](TESTING.md#beforeafter-shots)). Terrain exists only after the
    server starts, not in Edit mode.
 
 ## Known limits

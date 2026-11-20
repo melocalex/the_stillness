@@ -1,0 +1,61 @@
+{
+  "name": "TheStillnessShots",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "../../../src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "../../../src/server"
+      },
+      "ShotServer": {
+        "$path": "ShotServer.server.luau"
+      }
+    },
+    "ServerStorage": {
+      "StillnessAssets": {
+        "$path": "../../../assets/StillnessAssets.rbxm"
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CharacterWalkSpeed": 14,
+        "CameraMaxZoomDistance": 24
+      },
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "../../../src/client"
+        },
+        "ShotClient": {
+          "$path": "ShotClient.client.luau"
+        }
+      }
+    },
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": false,
+        "Gravity": 196.2
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "GlobalShadows": true,
+        "ClockTime": 14
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}

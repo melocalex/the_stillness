@@ -147,8 +147,9 @@ Older systems:
   drive Studio on a locked screen.
 - **Studio check of the valley rebuild**: computer-use access to Roblox
   Studio was declined on 2026-11-20, so the new terrain has no Studio
-  screenshots or build time yet. The before/after camera rig and the
-  checklist are in docs/TESTING.md (Environment).
+  screenshots or build time yet. The camera rig is
+  `tools/studio/shot-rig/build.sh` (base commit for "before": ba2d2a0);
+  the checklist is in docs/TESTING.md (Environment, Before/after shots).
 - **Creator Store axe** (87307912628259, 0 scripts): import needs Studio.
 - **Dog animations in a published game**: the account owner must publish
   the Dog KeyframeSequences as Animation assets.
