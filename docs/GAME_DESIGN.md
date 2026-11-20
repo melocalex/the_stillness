@@ -68,6 +68,61 @@ Rules the town learned (and the systems implement):
   break entry points as a group.
 - **The Old One**: a rare silhouette on the ridge. Watchers withdraw from it.
 
+### The unnatural (Chapter 35)
+
+Creatures are calm by default and sudden when they move; speed is
+frightening only because it is rare.
+
+- **Fear as food.** Each character's fear drifts toward a target built from
+  fictional gameplay signals: creature threat, pursuit, a creature in view,
+  exposure in the dark, creature noises nearby. A secure home, Caramelo,
+  the fire and Maya calm it. Creatures within 90 studs feed on it: energy
+  with diminishing returns, plus an appetite that grows while they feed.
+  Both decay when people stay calm, so calm players starve them.
+- **The bound.** Energy and hunger change boldness only: how long a
+  creature stares, how often it dashes, displaces or makes noise, and
+  whether hunger pulls it toward lit houses. They never change shelter,
+  breach or capture rules, or the night odds.
+- **Watcher movement.** It holds dead still under a gaze, its head turning
+  slowly toward you. After a long stare it either withdraws or, fed on
+  fear, dashes sideways to a spot by a tree and freezes again. While nobody
+  can see it (wide cone and line of sight, checked at both ends) it can
+  displace 10-22 studs toward what it wants. It never lands in a shelter or
+  within 20 studs of a player, and it never catches anyone mid-dash. It
+  walks slowly and pauses to watch lit houses.
+- **Crawler and Dweller** move in bursts with dead stops, jumpier but slower
+  on average.
+- **Noises are behaviour.** Distant calls, close breathing, and at a wall a
+  tap or scratch that repeats a few seconds later, as if testing for an
+  answer. Silence is the default.
+- **Temperaments** (Patient, Impulsive, Curious, Deceiver, Hungry) are small
+  multipliers on those choices; species rules still apply.
+
+### Caramelo (Chapter 38)
+
+He senses creatures with his own ears, eyes and a nose for presence, before
+you do and imperfectly. Heavy rain hides distant steps, deer and gusts can
+make him look up, and a perfectly still Watcher can slip past his eyes. His
+agitation rises fast and settles slowly across five warning levels:
+
+| Level | What you see and hear |
+| --- | --- |
+| 0 Relaxed | Sleeping, resting by the fire |
+| 1 Attentive | Head up, looking toward something |
+| 2 Suspicious | Watching a window, a quiet growl |
+| 3 Frightened | Whimpering, coming to you (or to his bed if you are far) |
+| 4 Panicked | Barking |
+
+Barks are real noise events creatures hear. A panic bark is two or three;
+a single defensive bark can startle a Crawler right on top of him. One bark
+is rarely a disaster; repeated barking adds up. Calm him (T when he is
+agitated) one moment at a time, never instantly. Hide together (E): crouch
+in the coat and he tucks under its hem, which calms and quiets him while you
+stay crouched. A bark under the coat is still a bark. He learns: calming
+him out of real fear trains quietness, long hiding trains shared hiding,
+and a creature that came and went without harm frightens him less next
+time. He is never fearless.
+
 ## Story arc
 
 **Day 1, the opening (Revision 2.0, implemented in `OpeningService`):**
