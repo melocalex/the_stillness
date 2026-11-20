@@ -250,7 +250,7 @@ local function hook(model: Model)
 		needle = buildDial(dial),
 		dots = buildScreen(screen),
 		lamps = lamps,
-		hum = makeLoop(if C.hum ~= "" then C.hum else C.static, case),
+		hum = makeLoop(C.hum, case),
 		tone = makeLoop(C.tone, case),
 		shown = 0,
 		phase = 0,
@@ -282,7 +282,7 @@ local function render(dt: number)
 
 	-- Needle: a damped swing, trembling with measurement noise while on.
 	s.shown += (target - s.shown) * math.min(dt * 2.5, 1)
-	local wobble = if powered then math.noise(os.clock() * 1.7, 0.3) * jitter * 0.6 else 0
+	local wobble = if powered then math.noise(os.clock() * 1.7, 0.3) * jitter * 0.3 else 0
 	s.needle.Rotation = -SWEEP / 2 + SWEEP * math.clamp((s.shown + wobble) / 100, 0, 1)
 
 	-- Trace: a sine that frays as the field turns irregular.
@@ -329,14 +329,13 @@ local function render(dt: number)
 	setLamp(L.LampEmit, emitColor)
 	setLamp(L.LampFault, if powered and (level == "UNKNOWN" or jitter >= 7) then PALE else nil)
 
-	-- Hum: quiet, higher and with a tremor when the scan is charging.
+	-- Hum (silent until an id is verified): quiet, higher with sensitivity,
+	-- with a tremor while the scan is charging.
 	local hum = s.hum
 	if hum then
-		local verified = AudioConfig.Chaoscope.hum ~= ""
-		local base = if verified then 0.12 else 0.035
 		local tremor = if emit == "blink" then 0.6 + 0.4 * math.sin(os.clock() * 18) else 1
-		hum.Volume = if powered then base * (0.7 + sens * 0.08) * tremor * AudioConfig.Mix.CueVolume else 0
-		hum.PlaybackSpeed = (if verified then 0.85 else 0.42) + sens * 0.05
+		hum.Volume = if powered then 0.12 * (0.7 + sens * 0.08) * tremor * AudioConfig.Mix.CueVolume else 0
+		hum.PlaybackSpeed = 0.85 + sens * 0.05
 	end
 	local tone = s.tone
 	if tone then
@@ -490,12 +489,22 @@ local function open()
 			close()
 		end
 	end)
-	ContextActionService:BindActionAtPriority("StillScopeExit", function(_, state)
-		if state == Enum.UserInputState.Begin then
-			close()
-		end
-		return Enum.ContextActionResult.Sink
-	end, false, 3000, Enum.KeyCode.E, Enum.KeyCode.Escape, Enum.KeyCode.Space, Enum.KeyCode.ButtonB)
+	ContextActionService:BindActionAtPriority(
+		"StillScopeExit",
+		function(_, state)
+			if state == Enum.UserInputState.Begin then
+				close()
+			end
+			return Enum.ContextActionResult.Sink
+		end,
+		false,
+		3000,
+		Enum.KeyCode.F,
+		Enum.KeyCode.E,
+		Enum.KeyCode.Escape,
+		Enum.KeyCode.Space,
+		Enum.KeyCode.ButtonB
+	)
 end
 
 -- The Echo ------------------------------------------------------------------------

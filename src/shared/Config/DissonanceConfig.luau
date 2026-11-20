@@ -36,20 +36,39 @@ DissonanceConfig.Field = {
 
 -- Instrument modes. range in studs, noise in CEU (one sigma at sensitivity
 -- 3), update in seconds, quantize rounds the display, flat averages every
--- sector in range equally (an approximate regional picture), signature is
--- the strongest scan signature this mode can emit (at full sensitivity).
+-- sector in range equally (an approximate regional picture), blend is how
+-- far the needle moves toward each new sample (the meter's damping),
+-- signature is the strongest scan signature this mode can emit (at full
+-- sensitivity).
 export type Mode = {
 	range: number,
 	noise: number,
 	update: number,
 	quantize: number,
 	flat: boolean,
+	blend: number,
 	signature: number,
 }
 DissonanceConfig.Modes = {
-	PASSIVE = { range = 90, noise = 5, update = 3, quantize = 1, flat = false, signature = 0 },
-	LOCAL = { range = 180, noise = 2, update = 1, quantize = 0.5, flat = false, signature = 0.35 },
-	REGIONAL = { range = 1400, noise = 6, update = 4, quantize = 5, flat = true, signature = 0.7 },
+	PASSIVE = { range = 90, noise = 3, update = 3, quantize = 1, flat = false, blend = 0.25, signature = 0 },
+	LOCAL = {
+		range = 180,
+		noise = 2,
+		update = 1,
+		quantize = 0.5,
+		flat = false,
+		blend = 0.5,
+		signature = 0.35,
+	},
+	REGIONAL = {
+		range = 1400,
+		noise = 6,
+		update = 4,
+		quantize = 5,
+		flat = true,
+		blend = 0.4,
+		signature = 0.7,
+	},
 } :: { [string]: Mode }
 DissonanceConfig.ModeOrder = { "PASSIVE", "LOCAL", "REGIONAL" }
 DissonanceConfig.Sensitivity = { min = 1, max = 5, default = 2 }
@@ -64,7 +83,7 @@ DissonanceConfig.Levels = {
 	{ name = "THRESHOLD", from = 80 },
 }
 DissonanceConfig.LevelRules = {
-	hysteresis = 3, -- CEU below a border before the level drops
+	hysteresis = 4, -- CEU below a border before the level drops
 	unknownUncertainty = 9, -- noise sigma at or above which the level is UNKNOWN
 	zeroBelow = 0.75, -- a reading this close to zero is no reading at all
 }

@@ -131,12 +131,12 @@ existing game melody is copied.
 
 ## Chaoscope audio (Chapter 36)
 
-`AudioConfig.Chaoscope` reuses two ids already listed and verified above:
-`click` is 9125609743 (the light switch click) and `static` is 9125774208
-(the radio static, also used quiet and slow as the hum for now). `hum` and
-`tone` are empty. The candidates below come from the ProSoundEffects catalog
-and are **not verified** yet; they enter `AudioConfig` only after
-`tools/studio/verify_dissonance_audio.luau` loads them in Studio.
+The scope's clicks and static are the `switch` (9125609743) and
+`radioStatic` (9125774208) cues listed above. `AudioConfig.Chaoscope.hum`
+and `tone` are empty, so the hum and tone are silent. The candidates below
+come from the ProSoundEffects catalog and are **not verified** yet; they
+enter `AudioConfig` only after `tools/studio/verify_dissonance_audio.luau`
+loads them in Studio, and after someone has listened to them.
 
 | Candidate | Asset id | Title | Catalog |
 | --- | --- | --- | --- |

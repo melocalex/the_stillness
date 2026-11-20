@@ -222,13 +222,26 @@ function ChaosField.read(
 	local sigma = mode.noise * (1.3 - 0.6 * t) + interference
 	-- A dead field reads dead: no noise floor to hide it.
 	local shown = if truth < 1 then truth else math.max(0, truth + sigma * noise)
-	local q = mode.quantize
-	if q > 0 then
-		shown = math.floor(shown / q + 0.5) * q
-	end
+	shown = ChaosField.quantize(shown, mode.quantize)
 	local irregularity =
 		clamp(math.abs(trend) / 3 + anomaly / math.max(truth, 1) * 0.9 + interference * 0.05, 0, 1)
 	return { ceu = shown, uncertainty = sigma, irregularity = irregularity }
+end
+
+-- The meter's damping: the needle moves part of the way toward each new
+-- sample. A dead field (exactly zero) drops the needle at once.
+function ChaosField.blend(prev: number?, ceu: number, blend: number): number
+	if prev == nil or ceu == 0 then
+		return ceu
+	end
+	return prev + (ceu - prev) * clamp(blend, 0, 1)
+end
+
+function ChaosField.quantize(ceu: number, step: number): number
+	if step <= 0 then
+		return ceu
+	end
+	return math.floor(ceu / step + 0.5) * step
 end
 
 -- Warning level for a displayed reading, with hysteresis against the

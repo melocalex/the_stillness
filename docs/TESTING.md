@@ -58,9 +58,9 @@ Setup: `rojo build -o <scratch>/dissonance.rbxlx`, open it, Play. In Server
 view set ReplicatedStorage `TimeScale` to 200 until day 3 Dusk (scripted
 rain), then back to 1. Walk to the cabin table, Caramelo on his bed.
 - [ ] The H-17 sits on the table beside the radio, facing the stools; the
-  dial, trace and POWER lamp show; a faint hum
-- [ ] R switches it off and on (click); E frames it and shows POWER, mode
-  and sensitivity; Esc leaves
+  dial, trace and POWER lamp show; the needle drifts, it does not jump
+- [ ] R switches it off and on (click); F frames it and shows POWER, mode
+  and sensitivity; Esc leaves; the radio and lamp prompts still work on E
 - [ ] Set ReplicatedStorage `DissonanceForce` to `Arrival` (Server view):
   the needle climbs over the next half minute; LOCAL reads about 40 with a
   jagged trace; REGIONAL stays mostly normal

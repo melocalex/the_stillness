@@ -5,8 +5,8 @@
 --
 -- Contract: tag Chaoscope; parts Case, Face, Dial (needle SurfaceGui),
 -- Screen (waveform SurfaceGui), LampPower, LampSignal, LampEmit, LampFault,
--- Knob, Switch; prompts ScopePrompt (Dial, ClientAction "Chaoscope") and
--- ScopePowerPrompt (Switch, key R).
+-- Knob, Switch; prompts ScopePrompt (Dial, key F, ClientAction "Chaoscope")
+-- and ScopePowerPrompt (Switch, key R).
 
 local CollectionService = game:GetService("CollectionService")
 
@@ -118,6 +118,8 @@ function Chaoscope.build(tableTop: BasePart, offset: Vector3): Model
 	local look = Builder.prompt(dial, "Look closely", "Chaoscope", 0, 7)
 	look.Name = "ScopePrompt"
 	look:SetAttribute("ClientAction", "Chaoscope")
+	-- Own key: the radio and the table lamp beside it already use E.
+	look.KeyboardKeyCode = Enum.KeyCode.F
 	local power = Builder.prompt(switch, "Switch on", "Chaoscope", 0, 7)
 	power.Name = "ScopePowerPrompt"
 	power.KeyboardKeyCode = Enum.KeyCode.R

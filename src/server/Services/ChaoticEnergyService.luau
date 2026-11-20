@@ -62,6 +62,7 @@ local nextId = 0
 local quietUntil = 0
 local sinceRead = math.huge
 local shownLevel: string? = nil
+local smoothed: number? = nil -- the damped needle; nil starts fresh
 
 local function gauss(): number
 	local u1 = math.max(rng:NextNumber(), 1e-9)
@@ -193,6 +194,7 @@ local function publishOff()
 	m:SetAttribute("Level", "")
 	m:SetAttribute("Emit", "off")
 	shownLevel = nil
+	smoothed = nil
 end
 
 local function setPowered(on: boolean)
@@ -284,12 +286,15 @@ local function tick(dt: number)
 	end
 	sinceRead = 0
 	local r = ChaosField.read(field, scopePos.X, scopePos.Z, mode, sens, SENS.min, SENS.max, gauss())
-	shownLevel = ChaosField.level(LEVELS, RULES, r.ceu, r.uncertainty, shownLevel)
-	m:SetAttribute("Needle", round(r.ceu, 0.1))
+	local damped = ChaosField.blend(smoothed, r.ceu, mode.blend)
+	smoothed = damped
+	local shown = ChaosField.quantize(damped, mode.quantize)
+	shownLevel = ChaosField.level(LEVELS, RULES, shown, r.uncertainty, shownLevel)
+	m:SetAttribute("Needle", round(shown, 0.1))
 	m:SetAttribute("Jitter", round(r.uncertainty, 0.1))
 	m:SetAttribute("Wave", round(r.irregularity, 0.01))
 	m:SetAttribute("Level", shownLevel)
-	DissonanceEventDirector.reading(r.ceu, shownLevel :: string, modeName, r.irregularity)
+	DissonanceEventDirector.reading(shown, shownLevel :: string, modeName, r.irregularity)
 end
 
 local function onRequest(player: Player, action: any, value: any)

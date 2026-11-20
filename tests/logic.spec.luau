@@ -1171,6 +1171,54 @@ describe("Dissonance", function()
 		end
 		truthy(reading("LOCAL") < LEVELS[2].from, "afterwards the needle settles")
 	end)
+	it("PASSIVE through real noise: damped, rarely flapping, still shows the climb", function()
+		local f = ChaosField.new(FC)
+		local g = gaussFrom(5 * 7919)
+		local M = MODES.PASSIVE
+		local smooth: number? = nil
+		local level: string? = nil
+		local changes = 0
+		local function read(): number
+			local r = ChaosField.read(f, 3, 5, M, SENS.default, SENS.min, SENS.max, g())
+			local damped = ChaosField.blend(smooth, r.ceu, M.blend)
+			smooth = damped
+			local shown = ChaosField.quantize(damped, M.quantize)
+			local l = ChaosField.level(LEVELS, RULES, shown, r.uncertainty, level)
+			if level and l ~= level then
+				changes += 1
+			end
+			level = l
+			return shown
+		end
+		local env = quietEnv({ rain = 2 })
+		for _ = 1, 120 do
+			ChaosField.step(f, 1, env, g)
+		end
+		local before = 0
+		for t = 1, 300 do
+			ChaosField.step(f, 1, env, g)
+			if t % M.update == 0 then
+				before = read()
+			end
+		end
+		truthy(changes <= 4, "the SIGNAL lamp flapped " .. changes .. " times in five quiet minutes")
+		local home = ChaosField.sectorAt(f, 0, 0)
+		local a = Dissonance.newAnomaly(1, "Arrival", home.x, home.z, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local last = before
+		for t = 1, 300 do
+			local stage = a.stage
+			Dissonance.step(a, 1, 0, AC)
+			ChaosField.step(f, 1, quietEnv({ rain = 2, sources = { Dissonance.source(a) } }), g)
+			if t % M.update == 0 then
+				last = read()
+			end
+			if stage == "ACTIVE" and a.stage == "PEAK" then
+				break
+			end
+		end
+		truthy(last >= before + 15, "PASSIVE shows the disturbance: " .. before .. " to " .. last)
+		eq(ChaosField.blend(30, 0, M.blend), 0) -- a dead field drops the needle at once
+	end)
 	it("config is ordered and the passive mode is silent", function()
 		for i = 2, #LEVELS do
 			truthy(LEVELS[i].from > LEVELS[i - 1].from)

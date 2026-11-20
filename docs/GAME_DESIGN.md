@@ -186,10 +186,12 @@ cabin table can read it.
 
 **The H-17 Chaoscope.** A boxy field instrument next to the radio: an analog
 CEU dial, a small oscilloscope trace, four lamps (POWER, SIGNAL, EMIT, FAULT),
-a sensitivity knob and a power switch, with a low hum. Press R at the switch
-to turn it on or off, or E to look closely: the camera frames the instrument
-and three plain controls appear (POWER, mode, sensitivity). There is no HUD
-meter. You learn the instrument by looking at it.
+a sensitivity knob and a power switch, and a low hum (silent until a hum
+sound is verified). Press R at the switch to turn it on or off, or F to look
+closely: the camera frames the instrument and three plain controls appear
+(POWER, mode, sensitivity). There is no HUD meter. You learn the instrument
+by looking at it. The needle is damped like a real meter, so it drifts
+rather than jumps.
 
 **The field is not a monster count.** Each map sector has a background
 (a baseline, a little more at night, a slow drift), a weather term (rain
@@ -213,8 +215,8 @@ Higher sensitivity lowers the noise but raises the scan signature.
 
 **Warning levels.** STABLE (under 18 CEU), DRIFT (18), DISTURBANCE (36),
 CONVERGENCE (58), THRESHOLD (80), and UNKNOWN when the reading is dead zero
-or too noisy to trust. Levels have a small hysteresis so a needle on a
-border does not flap.
+or too noisy to trust. A level only drops once the needle is 4 CEU below its
+border, so a needle on a border does not flap.
 
 **Signal families.** Each anomaly runs onset, active, peak and fade, with
 stage lengths drawn per anomaly, so no two play out the same way.

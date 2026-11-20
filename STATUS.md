@@ -59,7 +59,7 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
 
 ## Automated tests
 
-- 108 Lune unit tests over the pure logic: TimeCycle, Perception,
+- 109 Lune unit tests over the pure logic: TimeCycle, Perception,
   CreatureBrain, Shelter, Noise, CollectiveMind, Inventory, NightClass
   (including the 65/25/9/1 night weights and the scripted first nights),
   Comfort, LightVisibility, MusicState (including storm night), Journal,
@@ -72,7 +72,8 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
   adds uncertainty; a field of calm creatures reads STABLE; anomalies
   happen with no creatures; REGIONAL barely moves for a local anomaly; an
   Absence reads exactly zero (UNKNOWN); the Echo never keeps the original
-  timing; the scan emitter warns before it pulses and cools down; every
+  timing; PASSIVE with real noise samples is damped, rarely flaps and still
+  shows the climb; the scan emitter warns before it pulses and cools down; every
   director event is nonviolent and has a cooldown; and a pure-logic replay
   of the 36.12 rainy night (onset climb, local disturbance, regional calm,
   the phrase repeating and coming through whole, the needle settling).
@@ -147,8 +148,9 @@ Chapter 36, the Dissonance (branch `feat/dissonance`, 2026-11-20). Passes
 the gate; **not run in Studio**:
 
 - H-17 Chaoscope on the cabin table: dial, trace and lamps drawn on the
-  client from scope attributes, R to switch on/off, E to look closely
-  (POWER, mode, sensitivity). On by default in PASSIVE.
+  client from scope attributes, R to switch on/off, F to look closely
+  (POWER, mode, sensitivity). On by default in PASSIVE. The needle is
+  damped per mode so it drifts rather than jumps.
 - ChaoticEnergyService: 11x11 sector field ticking at 1 Hz on real time;
   rain, night, collective level and creature `FearEnergy` / `Hunger`
   attributes as inputs (missing reads 0); one anomaly at a time, none on
@@ -161,9 +163,9 @@ the gate; **not run in Studio**:
 - Scan signature with charge, warning, pulse and cooldown; published as
   workspace `ChaosSignal`, `ChaosSignalPosition`, `ChaosSignalAt` for the
   creature code to read later (nothing reads it yet).
-- Audio: the scope reuses verified ids (light switch click, radio static).
-  The hum is the radio static played quiet and slow until a real hum is
-  verified; the faint tone is silent (no verified id yet).
+- Audio: the scope's clicks and static reuse verified cues (light switch,
+  radio static). The hum and the faint tone are silent until an id is
+  verified.
 
 Older systems:
 
