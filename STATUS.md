@@ -156,9 +156,11 @@ the gate; **not run in Studio**:
   attributes as inputs (missing reads 0); one anomaly at a time, none on
   day 1; Studio seeding through `DissonanceForce`.
 - DissonanceEventDirector: transmissions on the radio card ("Unknown: ..."),
-  radio static, window rattle, one flicker, the hush, Maya's window, the
-  dog's `rouse` / watch / low growl (`DogService.sense`), the Echo, the
-  needle moving while off; journal entries through `ObservationService.note`.
+  radio static, window rattle, one flicker, the hush, Maya's window (skipped
+  when MayaService keeps her dark), a startle for Caramelo through his mood
+  system (`StartleStrength` / `StartledAt`), the Echo, the needle moving
+  while off; journal entries through `ObservationService.note`. Not done:
+  Caramelo facing the doorway (the startle hook carries no direction).
   Muted on day 1 and while `TimeScale` is above 1.
 - Scan signature with charge, warning, pulse and cooldown; published as
   workspace `ChaosSignal`, `ChaosSignalPosition`, `ChaosSignalAt` for the

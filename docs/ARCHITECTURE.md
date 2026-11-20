@@ -55,7 +55,7 @@ Started in dependency order by `Main.server.luau` after the world is built
 | `HouseActivityService`, `OldOneService`, `ObservationService` | Distant house routines, the Old One, window observation and journal |
 | `BuildService` | Grid placement validated on the server |
 | `ChaoticEnergyService`, `World/Chaoscope` | Chapter 36: the chaotic energy field (1 Hz, real time), anomalies, the H-17 Chaoscope on the cabin table and its validated `Chaoscope` remote |
-| `DissonanceEventDirector` | Answers anomaly beats with nonvisual events through LightService, MayaService, DogService.sense and ObservationService.note |
+| `DissonanceEventDirector` | Answers anomaly beats with nonvisual events through LightService, MayaService, the dog's startle attributes and ObservationService.note |
 
 ## Client
 
@@ -100,8 +100,13 @@ ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
 - ReplicatedStorage `Hush` (0-1) pauses ambience, fire and music on the
   client (the `Hushable` SoundGroup). `DissonanceForce` (Studio only) seeds
   an anomaly at the house.
-- Dog `Pose` adds `rouse` (lying, head up). `DogService.sense(kind, lookAt,
-  seconds, near, radius)` sets a timed override that `tickDog` consumes.
+- Caramelo reacts through his own mood system: the director sets
+  `StartleStrength` (0.22 to 0.45) and `StartledAt` on dog models within
+  45 studs of the scope. DogService turns that into agitation (head up at
+  ALERT, a low growl at SUSPICIOUS) and he calms down by himself.
+- Maya's window blink skips, and never relights, when MayaService would keep
+  her house dark (a creature within 60 studs of the cabin, or the
+  `mayaSilent` night story).
 - Remotes: `Chaoscope` (client to server, rate 4/s, within 12 studs) and
   `Dissonance` (server to client; `echo` replays the client's own recent
   in-game cues).

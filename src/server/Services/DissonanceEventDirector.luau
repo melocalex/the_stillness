@@ -166,9 +166,27 @@ local function hush()
 	end)
 end
 
+-- MayaService darkens her house by itself when a creature is near the cabin
+-- at night, and stays dark on a "mayaSilent" night. Same test here, so the
+-- blink never relights a house she chose to darken.
+local function mayaWantsDark(): boolean
+	if ReplicatedStorage:GetAttribute("NightStory") == "mayaSilent" then
+		return true
+	end
+	for _, m in CollectionService:GetTagged("Creature") do
+		local state = m:GetAttribute("State")
+		if m:IsA("Model") and state ~= "DORMANT" and state ~= "RETREAT" then
+			if (m:GetPivot().Position - scopePos).Magnitude < 60 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function mayaBlink()
 	local house = MayaService.house()
-	if not house then
+	if not house or mayaWantsDark() then
 		return
 	end
 	local room = if house:GetAttribute("Upstairs") == true then "Upstairs" else "Downstairs"
@@ -178,7 +196,7 @@ local function mayaBlink()
 	local phase = TimeService.snapshot().phase
 	MayaService.setRoom(room, false)
 	task.delay(between(D.mayaDarkSeconds), function()
-		if TimeService.snapshot().phase == phase then
+		if TimeService.snapshot().phase == phase and not mayaWantsDark() then
 			MayaService.setRoom(room, true)
 		end
 	end)

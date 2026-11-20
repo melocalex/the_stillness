@@ -245,9 +245,10 @@ workspace attributes `ChaosSignal` (strength), `ChaosSignalPosition` and
 changes, coherence steps, level crossings), never a timer, and any beat may
 also answer with nothing. The answers: radio static from the cabin radio, a
 window rattling, one flicker of the house circuit (only if an electric light
-is on), the ambience pause, Maya's window going dark for a few seconds,
-Caramelo lifting his head where he lies, standing to watch the door, or
-growling low (a growl that makes no noise event). If the scope is switched
+is on), the ambience pause, Maya's window going dark for a few seconds
+(never when she has chosen to stay dark), and a startle for Caramelo that
+his own mood system turns into raising his head or a low growl, kept well
+below barking. If the scope is switched
 off after an Arrival peaked, there is a chance of a click and the needle
 moving on its own, then settling. Nothing in the Dissonance damages,
 breaches, calls creatures or blocks the story, and it stays silent on day 1.

@@ -64,7 +64,9 @@ rain), then back to 1. Walk to the cabin table, Caramelo on his bed.
 - [ ] Set ReplicatedStorage `DissonanceForce` to `Arrival` (Server view):
   the needle climbs over the next half minute; LOCAL reads about 40 with a
   jagged trace; REGIONAL stays mostly normal
-- [ ] Caramelo lifts his head on his bed at least once during it
+- [ ] Caramelo's `DogMood` turns ALERT (head up) at least once during it,
+  maybe SUSPICIOUS with a low growl; he never barks from it alone and
+  settles afterwards
 - [ ] "Unknown: ..." appears on the radio card with letters missing, then
   whole after raising sensitivity in LOCAL; the EMIT lamp warms, blinks,
   flashes; workspace `ChaosSignal` goes above 0 and back to 0
