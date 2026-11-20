@@ -177,6 +177,12 @@ Older systems:
 
 ## Known issues
 
+- The deer (5114925772) is one rigid mesh with no skeleton: its legs never
+  move; it only bobs while walking (3d7ce84). Rigged, script-free
+  candidates to vet in Studio: "Lobo's Rigged Deers" (12835993547, 7,320
+  triangles) and "deer rigged?" (3573829012, 28,581 triangles). The
+  rabbit already has bones. Ground placement and house window glass were
+  fixed in the same commit; neither has been seen in Studio yet.
 - Bookshelf asset faces the wrong way; rocking chair a bit small.
 - The stew message in InteractionService still says "(Tab)"; the pack is
   on P.
