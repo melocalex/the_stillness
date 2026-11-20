@@ -42,11 +42,14 @@ Started in dependency order by `Main.server.luau` after the world is built
 | `NoiseService` | Noise events, attenuation through walls and weather |
 | `PlayerService` | Stance, stamina, breath, coat, comfort, exposure, inventory, capture |
 | `InteractionService` | Every cabin/landmark prompt (doors, windows, lights, fire, bed, radio...) |
-| `GatherService` | Resource nodes, depletion, respawn |
+| `GatherService` | Resource nodes, depletion, respawn, tree felling |
+| `ToolService` | The axe tool: swing animation, chop the tree in front |
 | `StoryService` | Facts and objective progression |
+| `MayaService` | Maya's R15 NPC in her own house: routine spots by phase, window lights, Talk prompt, radio lines |
+| `OpeningService` | Day 1 script: morning radio call, sunset warning, the guided first Watcher, rain and lamp afterwards; every step has a fallback |
 | `CreatureService`, `Creatures/Creature`, `Creatures/Rigs` | Spawning, AI tick budgets, senses, brain, pathfinding, window paradox, breaching |
 | `CollectiveService` | Shared creature awareness and coordinated attacks |
-| `NightDirector` | Night classification, warnings, spawning, dawn retreat |
+| `NightDirector` | Night classification, warnings, spawning (from night 2; night 1 belongs to the opening), dawn retreat |
 | `DogService` | Caramelo: follow, commands, alert, hide, pet |
 | `HouseActivityService`, `OldOneService`, `ObservationService` | Distant house routines, the Old One, window observation and journal |
 | `BuildService` | Grid placement validated on the server |
@@ -63,7 +66,11 @@ ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
 - Tags: `Shelter`, `ShelterVolume`, `EntryPoint`, `Door`, `Window`,
   `StillnessLight`, `Fireplace`, `DogBed`, `Chest`, `Workbench`, `CabinRadio`,
   `ResourceNode`, `LootCrate`, `DwellerPoint`, `Zone`, `WatchedHouse`,
-  `HousePane`, `OldOne`, `Creature`, `Dog`, `Wildlife`.
+  `HousePane`, `OldOne`, `Creature`, `Dog`, `Wildlife`, `AxeTool`,
+  `MayaHouse`, `Maya`.
+- Maya's house holds invisible `MayaSpot` parts; the `Spot` attribute
+  (`Kitchen`, `Window`, `Porch`, `Upstairs`) is the name `MayaService.goTo`
+  uses. Rooms are lit with the same `Room` attribute rules as watched houses.
 - Entry point attributes: `EntryId`, `EntryKind`, `Installed`, `Open`,
   `Health`, `MaxHealth`, `Shelter`, plus windows' `Latched`, `LatchBroken`,
   `CurtainsClosed`, `Shuttered`, `Tier`.
@@ -72,7 +79,8 @@ ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
 - Prompt names: `DoorPrompt`, `UpgradePrompt`, `CurtainPrompt`, `LatchPrompt`,
   `ObservePrompt`, `SwitchPrompt`, `SwitchPrompt2`, `LampPrompt`,
   `PowerPrompt`, `FirePrompt`, `CookPrompt`, `SleepPrompt`, `RadioPrompt`,
-  `WardrobePrompt`; all prompts use `ProximityPromptStyle.Custom`.
+  `WardrobePrompt`, `PetPrompt`, `MayaPrompt`; all prompts use
+  `ProximityPromptStyle.Custom`.
 
 ## Performance choices
 

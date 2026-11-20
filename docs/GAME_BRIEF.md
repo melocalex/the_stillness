@@ -10,9 +10,9 @@
 
 ## 1. One-line pitch
 
-A cozy survival horror game on Roblox. You live in a warm wooden house in
-Pinehaven, a half-abandoned mountain town, with your girlfriend Maya and your
-caramel street dog Caramelo. By day you gather, cook, explore and help
+A cozy survival horror game on Roblox. You live in a warm wooden house near
+Pinehaven, a half-abandoned mountain town, with your caramel street dog
+Caramelo. Your girlfriend Maya lives in her own house across the lake. By day you gather, cook, explore and help
 neighbors. At night something intelligent walks the forest, and you learn to
 switch off the lights, close the curtains, wear the old coat, hold your
 breath, and wait for dawn.
@@ -42,6 +42,17 @@ and a tall figure standing at the edge of the trees.
    and holding your breath can beat a search without combat.
 6. **A living town.** Named neighbors with routines, shops, a diner, a
    weather station, and a small group of people who chase monsters in storms.
+
+### Revision 2.0 decisions (binding)
+
+1. **Most nights are safe**: Peaceful 65%, Uneasy 25%, Bad 9%, Black 1%
+   (configurable; the story can override a night). No Black Night before
+   day 14.
+2. **Defensive play only**: no weapons, no killing monsters. The axe is a
+   tool for wood.
+3. **Maya lives independently** in her house across the lake. She may
+   visit or stay over; the player's cabin is not her home.
+4. **Monster research and storm chasing are optional** progression paths.
 
 ## 3. Setting and lore
 
@@ -83,7 +94,7 @@ they think you are when you wear it."*
 | Character | Role |
 | --- | --- |
 | **The player** | Lives in Pinehaven. Not a soldier or investigator. |
-| **Maya** | Girlfriend. Lives with the player at the start; also keeps her own house across the lake (later missions, emergencies, rescues). Independent, capable, sometimes rescues the player. Age-appropriate, platform-safe relationship. |
+| **Maya** | Girlfriend. Lives in her own house across the lake, with her own routine, lights and radio. Visits or stays over sometimes; the player's cabin is not her home. Independent, capable, sometimes rescues the player. Age-appropriate, platform-safe relationship. |
 | **Caramelo** | The player's caramel street dog (Brazilian "vira-lata caramelo" style). Companion, early-warning system, never dies. |
 | **Frank Miller** | Hardware store owner: axes, materials, latches, storm shutters. Knows Bad Nights. |
 | **Ellen Brooks** | Diner owner: meals, ingredients, rumors. Social hub. |
@@ -94,45 +105,42 @@ they think you are when you wear it."*
 Target population: 15-25 persistent named NPCs over time; six fully functional
 first.
 
-## 5. The opening (current direction, Chapter 34)
+## 5. The opening (Revision 2.0; supersedes the Chapter 34 version)
 
-1. **Main menu**: premium, atmospheric. Background: wooden cabin in a dark
-   forest, warm windows, rain, wind, mist, rare lightning, a rare silhouette.
-   Options: Continue, New Game, Play With Friends, Settings (volumes per
-   channel, sensitivity, subtitles, accessibility, graphics), Credits. Only
-   functional options are enabled.
-2. **Skippable 60-90 s cinematic**: aerial pass over mountains and forest,
-   the town alive (cars, people, chimneys), title *THE STILLNESS*, subtitle
-   *PINEHAVEN — 8:42 AM*, the neighborhood, then the player's house: Maya
-   making breakfast, the dog asleep by the fire.
-3. Maya: *"Morning. Looks like another beautiful day."* / *"We're running low
-   on firewood. Could you grab some before tonight?"* / *"And don't stay out
-   too late. The weather's been strange."* Control returns immediately.
-4. **GATHER FIREWOOD FOR TONIGHT**: find and equip the axe, go out with the
-   dog, chop a tree (visible axe, chopping animation, impact sounds, the tree
-   falls), collect wood, return, stack it by the fireplace. Maya
-   acknowledges it.
-5. **ENJOY THE EVENING**: pet and feed the dog, cook, sit, radio, windows.
-6. **Sunset**: birds go quiet, the music turns melancholic, neighbors' windows
-   light up. Radio: *"Residents of Pinehaven, an unstable weather system is
-   approaching from the northern ridge."* Then a distorted *"...keep your
-   windows closed..."* The dog stares at the forest.
-7. **First monster reveal**: a tall creature (a WatcherCreature) stands
-   between distant trees and slowly turns toward the house. No chase. Maya:
-   *"Don't move."* / *"That's a Watcher."* / *"They notice movement. Noise
-   makes things worse. And if more of them come, they start sharing what they
-   know."*
-8. **Interactive stealth tutorial** using the real systems: EQUIP THE COAT ->
-   DARKEN THE HOUSE (lights off, curtains closed, door shut) -> stay still,
-   hold breath (H) as it investigates the window -> it loses interest and
-   leaves. Forgiving; mistakes are recoverable.
-9. Maya: *"I think it's gone."* Rain begins. *"Let's stay inside tonight."*
-   -> SURVIVE YOUR FIRST NIGHT.
+1. **Main menu**: atmospheric, over a live camera shot of the cabin. Begin,
+   Settings (music, ambience and cue volumes, all working), Credits. Only
+   functional options are shown. A skippable cinematic is planned, not built.
+2. **Wake alone** in your furnished cabin with Caramelo. The fire is lit,
+   the door is hung, the windows are latched. The radio on the table
+   crackles.
+3. **Maya radios** from her house across the lake: *"Morning. I can see
+   smoke coming from your chimney. Are you awake yet?"* / *"Come over
+   later—I made something for you."* / *"Bring in some firewood first."*
+   If nobody answers, the speaker carries her voice after 45 seconds.
+4. **GATHER FIREWOOD FOR TONIGHT**: press 1 for the axe (visible in hand,
+   swing animation), chop marked trees (chips, shake, the tree falls away
+   from you, stump, regrows), then **FEED THE FIREPLACE**.
+5. **VISIT MAYA ACROSS THE LAKE** in daylight: she gives you a warm stew.
+6. **Sunset**: she radios a warning. **HEAD HOME BEFORE DARK.**
+7. **First Watcher**: it walks the north treeline. Maya, by radio: look
+   through the north window -> *"That's a Watcher. Light and movement draw
+   them. Stillness doesn't."* -> PUT ON YOUR COAT -> DARKEN THE HOUSE (fuse
+   box, curtains) -> STAY STILL (crouch; hold breath if it is at the glass).
+   The real creature AI runs the visit. While the lesson runs a hunt is
+   always broken off, so it cannot end in a capture.
+8. It leaves. Calm rain starts. Maya's upstairs lamp comes on: *"You okay
+   over there? I can still see your house."* -> SURVIVE YOUR FIRST NIGHT
+   (sleeping is refused until the Watcher has gone).
+
+**Success criterion for the vertical slice**: a new player can wake in a
+cozy house, interact with Caramelo, talk to Maya by radio, chop wood with a
+visible axe, visit Maya, return before dark, secure the house, survive a
+Watcher investigation, and finish the night in comfort.
 
 **The first seven days** (arc): 1 Coming Home, 2 The Empty Town (supplies in
 Pinehaven), 3 The Coat (concealment), 4 The Storm (wind, windows, breath),
-5 The House Across the Lake (Maya's emergency), 6 The Listening Winter
-(sheriff's records), 7 The First Bad Night.
+5 The House Across the Lake (Maya's emergency, needs the rescue system),
+6 The Listening Winter (sheriff's records), 7 The First Bad Night.
 
 ## 6. Core systems
 
@@ -197,9 +205,9 @@ Pinehaven), 3 The Coat (concealment), 4 The Storm (wind, windows, breath),
 - At any window: E to look out (bounded camera, zoom; binoculars zoom more).
 - The journal records real sightings (species, place, time, weather,
   behavior) and distinguishes observations from theories.
-- Neighbor houses have visible routines (lights, silhouettes); a lake-house
-  mystery progresses over nights; distant attacks on bad nights can be
-  watched.
+- Neighbor houses have visible routines (lights, silhouettes); a hill-house
+  mystery progresses over nights; Maya's windows across the lake light up at
+  dusk; distant attacks on bad nights can be watched.
 
 ### Dog (Caramelo)
 - Follow, stay, come, sit, sleep, go to bed, hide with you, calm.
@@ -273,7 +281,7 @@ windows are landmarks.
 ## 9. World layout
 
 - Current: ~2 km valley (terrain to +/-1000 studs, playable +/-860): cabin
-  by a lake, lake house across the water, abandoned house, radio tower on a
+  by a lake, Maya's house across the water, abandoned house, radio tower on a
   hill, nine neighbor buildings along dirt roads, meadows with wildlife
   (deer, rabbits, crows that flee creatures), a north ridge highland, distant
   snowy peaks.
@@ -313,18 +321,16 @@ loading.
 collective mind and breaching, bad nights, storms forcing windows open,
 curtains/latches/shutters, lights and fuse box, hold breath, coat,
 observation mode and journal, adaptive music, wildlife reactions, building.
+Since 2026-11-20 also: the axe tool with swing animation and falling trees,
+visible petting (IK), the rebuilt HUD and menu, the complete-cabin start,
+Maya as an R15 NPC in her own house (routine spots, lit windows, talk,
+radio), and the scripted day-1 opening with the guided first Watcher.
 
 **Not implemented yet:** Pinehaven town and loot, NPC neighbors and routines,
-Maya as an NPC, dialogue system, cinematic system, new menu, settings,
-hunger and cooking beyond one stew recipe, dog feeding, axe tool and chop
-animation, falling trees, petting animation, forecasting, Human Watchers
-profession, StreamingEnabled plan, performance measurements.
-
-**Owner feedback to address now:** the menu feels weak; chopping without an
-axe looks bad (the tree simply vanishes, no animation, no movement); petting
-has no animation; the game should start in a complete home with Maya and the
-dog, gather firewood, then a mood shift at night and a guided first-monster
-lesson; music should be more complex.
+Maya visiting or staying over, the Maya rescue system, a general dialogue
+system, cinematic system, hunger and cooking beyond one stew recipe, dog
+feeding, forecasting, Human Watchers profession, StreamingEnabled plan,
+performance measurements, richer layered music.
 
 ## 12. Constraints and rules
 
@@ -342,8 +348,8 @@ Please respond with:
 
 1. **Verdict**: what is strong, what is muddled, what is over-scoped.
 2. **Contradictions and risks**: design conflicts (for example Watchers as a
-   monster and as a human profession; Maya living with the player vs her own
-   house; cozy pacing vs survival pressure), technical risks on Roblox
+   monster and as a human profession; cozy pacing vs survival pressure; the
+   Revision 2.0 decisions above are settled), technical risks on Roblox
    (performance on a 4096 map, NPC count, animation ownership, streaming vs
    window observation), and moderation/IP risks.
 3. **A tightened core loop** for the first hour and for a typical day/night.
