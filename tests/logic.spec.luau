@@ -913,6 +913,25 @@ describe("DogMind", function()
 	end)
 end)
 
+describe("NightStories", function()
+	local KNOWN =
+		{ quiet = true, stays = true, visit = true, distant = true, passerby = true, mayaSilent = true }
+	it("only names stories the director can tell, and only for ordinary nights", function()
+		for nightType, weights in GameConfig.NightStories do
+			truthy(nightType == "Peaceful" or nightType == "Uneasy", nightType)
+			for name, w in weights do
+				truthy(KNOWN[name], "unknown story " .. name)
+				truthy(w > 0, name)
+			end
+		end
+	end)
+	it("peaceful nights are mostly quiet or harmless", function()
+		local w = GameConfig.NightStories.Peaceful
+		truthy(w.visit == nil, "no house visits on a peaceful night")
+		truthy(w.quiet >= 40)
+	end)
+end)
+
 describe("RadioConfig", function()
 	local CONDITIONS = {
 		morning = true,

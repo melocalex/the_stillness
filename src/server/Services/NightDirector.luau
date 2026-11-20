@@ -12,6 +12,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local NightClass = require(ReplicatedStorage.Shared.Logic.NightClass)
 local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
 local CreatureService = require(script.Parent.CreatureService)
+local MayaService = require(script.Parent.MayaService)
 local TimeService = require(script.Parent.TimeService)
 local WeatherService = require(script.Parent.WeatherService)
 
@@ -65,6 +66,90 @@ local function spawnCrawler()
 	)
 end
 
+-- Nights with stories: an ordinary night is one coherent situation, and
+-- often nothing at all. Never the same story twice in two nights.
+local recent: { string } = {}
+local mayaSilent = false
+
+local function pickStory(t: string): string?
+	local weights = GameConfig.NightStories[t]
+	if not weights then
+		return nil
+	end
+	local pool, total = {}, 0
+	for name, w in weights do
+		if name == "quiet" or not table.find(recent, name) then
+			table.insert(pool, { name = name, w = w })
+			total += w
+		end
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, p in pool do
+		roll -= p.w
+		if roll <= 0 then
+			return p.name
+		end
+	end
+	return "quiet"
+end
+
+-- Compass bearing and distance from the cabin to a world point.
+local function bearingTo(x: number, z: number): (number, number)
+	local dx, dz = x - WorldConfig.Cabin.x, z - WorldConfig.Cabin.z
+	return math.deg(math.atan2(dx, -dz)), math.sqrt(dx * dx + dz * dz)
+end
+
+local function watcherAround(bearing: number, dist: number, spread: number, leash: number?, arc: number)
+	local patrol = {}
+	for i = 1, 4 do
+		table.insert(
+			patrol,
+			CreatureService.edgePoint(bearing + (i - 2.5) * arc, dist + rng:NextNumber(-spread, spread))
+		)
+	end
+	CreatureService.spawn("Watcher", CreatureService.edgePoint(bearing, dist), {
+		patrol = patrol,
+		leash = leash,
+		retreatTo = CreatureService.edgePoint(bearing, dist + 140),
+	})
+end
+
+local function tellStory(story: string, nightLen: number)
+	local at = nightLen * rng:NextNumber(0.1, 0.3)
+	if story == "stays" then
+		local b = rng:NextNumber(-30, 30)
+		after(at, function()
+			watcherAround(b, 75, 3, 25, 3)
+		end)
+	elseif story == "visit" then
+		after(at, function()
+			spawnWatcher(true)
+		end)
+	elseif story == "distant" then
+		local hill = WorldConfig.Houses[1]
+		for _, h in WorldConfig.Houses do
+			if h.id == "HillHouse" then
+				hill = h
+			end
+		end
+		local b, d = bearingTo(hill.x, hill.z)
+		after(at, function()
+			watcherAround(b, d + 15, 15, 45, 6)
+		end)
+	elseif story == "passerby" then
+		local b = rng:NextNumber(0, 360)
+		after(at, function()
+			watcherAround(b, 140, 10, nil, 25)
+		end)
+	elseif story == "mayaSilent" then
+		after(nightLen * 0.3, function()
+			mayaSilent = true
+			MayaService.setRoom("Upstairs", false)
+			MayaService.setRoom("Downstairs", false)
+		end)
+	end
+end
+
 local function startNight(day: number)
 	if day == 1 then
 		return -- Night 1 is the guided first Watcher (OpeningService).
@@ -72,6 +157,17 @@ local function startNight(day: number)
 	local t = nightTypeFor(day)
 	local profile = GameConfig.NightProfiles[t]
 	local nightLen = GameConfig.Time.Durations.Night
+	local story = pickStory(t)
+	if story then
+		table.insert(recent, story)
+		while #recent > 2 do
+			table.remove(recent, 1)
+		end
+		ReplicatedStorage:SetAttribute("NightStory", story)
+		tellStory(story, nightLen)
+		return
+	end
+	ReplicatedStorage:SetAttribute("NightStory", t)
 	if rng:NextNumber() < profile.watcherChance then
 		for i = 1, profile.watchers do
 			-- The first night's watcher keeps its distance.
@@ -113,6 +209,14 @@ local function onPhase(snap: any, _before: any)
 		startNight(snap.day)
 	elseif snap.phase == "Dawn" then
 		CreatureService.retreatAll()
+		if mayaSilent then
+			mayaSilent = false
+			task.delay(20, function()
+				MayaService.radio(
+					"Sorry. My radio battery died last night, and the lamp went with it. Did you sleep?"
+				)
+			end)
+		end
 		ReplicatedStorage:SetAttribute("BadNightWarning", false)
 		ReplicatedStorage:SetAttribute("HowlingNight", false)
 		ReplicatedStorage:SetAttribute("BirdsQuiet", false)

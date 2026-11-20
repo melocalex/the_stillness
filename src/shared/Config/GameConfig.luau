@@ -142,6 +142,20 @@ GameConfig.Dog = {
 	-- Senses, mood, barking and calming live in Logic/DogMind.
 }
 
+-- What an ordinary night is about: one story per night, never the same one
+-- twice within two nights (except quiet). Bad and Black nights use
+-- NightProfiles instead.
+--   quiet       nothing at all
+--   stays       a Watcher stands at the treeline for a long time
+--   visit       a Watcher comes to the house and its windows
+--   distant     a Watcher is interested in the hill house, not you
+--   passerby    a Watcher walks a far arc around the lake and moves on
+--   mayaSilent  Maya's lamp and radio go dark; no creature at all
+GameConfig.NightStories = {
+	Peaceful = { quiet = 50, stays = 15, distant = 15, mayaSilent = 10, passerby = 10 },
+	Uneasy = { visit = 35, stays = 25, distant = 20, passerby = 10, quiet = 10 },
+} :: { [string]: { [string]: number } }
+
 -- The watched house on the hill (HillHouse; Maya lives in the lake house
 -- now). Fractions are of the Night phase.
 GameConfig.LakeHouse = {
