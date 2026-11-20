@@ -281,7 +281,7 @@ end
 -- rig on a Motor6D ("MeshMotor") that the client bobs for a gait
 -- (Controllers/CreatureAnimator). Yaw turns the mesh to face -Z.
 local CRAWLER_SCALE = 0.8
-local CRAWLER_YAW = 0
+local CRAWLER_YAW = 90 -- the mesh's head points along its +X; seen in Studio 2026-11-20
 
 dressCrawler = function(m: Model, r: BasePart, body: BasePart, hip: number)
 	local mesh = Assets.clone("Creature_Crawler")
