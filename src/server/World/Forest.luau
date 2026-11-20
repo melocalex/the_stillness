@@ -25,11 +25,10 @@ local KIND_SCALE: { [string]: { number } } = {
 }
 
 local function biomeKind(x: number, z: number, h: number, rng: Random): string
-	local lakeD = math.sqrt((x - W.Lake.x) ^ 2 + (z - W.Lake.z) ^ 2)
 	if h > 55 then
 		return "SnowPine"
 	end
-	if lakeD < W.Lake.radius + 70 and rng:NextNumber() < 0.22 then
+	if Terrain.lakeMetric(x, z) < 70 and rng:NextNumber() < 0.22 then
 		return "Oak"
 	end
 	local r = rng:NextNumber()
@@ -89,7 +88,16 @@ local function clearOk(x: number, z: number, extra: number): boolean
 	if Terrain.isWater(x, z) then
 		return false
 	end
-	return math.max(math.abs(x), math.abs(z)) < W.MountainStart + 30
+	return math.max(math.abs(x), math.abs(z)) < W.PlayableRadius
+end
+
+-- Forest density 0..1: groves and open glades instead of an even spread.
+local function forestDensity(x: number, z: number): number
+	if Terrain.inMeadow(x, z) then
+		return 0.05
+	end
+	local n = math.noise(x / 120, z / 120, 6.6) * 0.5 + math.noise(x / 40, z / 40, 3.9) * 0.25
+	return math.clamp(0.55 + n, 0.05, 1)
 end
 
 local function randomSpot(rng: Random, extra: number): (number, number)
@@ -268,7 +276,7 @@ function Forest.build(parent: Instance, seed: number)
 	for _ = 1, cfg.Trees do
 		local x, z = randomSpot(rng, 0)
 		-- Groves and glades: accept by local forest density.
-		if x < 9000 and rng:NextNumber() < Terrain.forestDensity(x, z) then
+		if x < 9000 and rng:NextNumber() < forestDensity(x, z) then
 			local threat = (x - W.ThreatArea.x) ^ 2 + (z - W.ThreatArea.z) ^ 2 < W.ThreatArea.radius ^ 2
 			local t = if threat then Forest.pine(trees, x, z, rng, true) else Forest.tree(trees, x, z, rng)
 			-- Gatherable trees are denser near the cabin.
@@ -297,17 +305,6 @@ function Forest.build(parent: Instance, seed: number)
 			makeResource(t, "Tree", 3)
 		end
 	end
-	-- Snow pines on the mountain slopes around the valley (scenery).
-	for _ = 1, 90 do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local r = rng:NextNumber(W.MountainStart + 10, W.HalfSize - 20)
-		local x, z = math.cos(a) * r, math.sin(a) * r
-		local edge = math.max(math.abs(x), math.abs(z))
-		if edge < W.HalfSize - 10 and Terrain.heightAt(x, z) < 140 then
-			Forest.tree(trees, x, z, rng, "SnowPine")
-		end
-	end
-
 	for i = 1, cfg.Rocks do
 		local x, z = randomSpot(rng, 0)
 		if x < 9000 then

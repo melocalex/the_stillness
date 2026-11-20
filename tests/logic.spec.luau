@@ -727,6 +727,8 @@ describe("AudioConfig", function()
 	end)
 end)
 
+require("./terrain.spec")
+
 if not t.report() then
 	process.exit(1)
 end
