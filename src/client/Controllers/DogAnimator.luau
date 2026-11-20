@@ -317,6 +317,23 @@ local function animate(m: Model, dt: number)
 		legs.LegBR = CFrame.Angles(math.rad(-65), 0, 0)
 		neck = CFrame.Angles(math.rad(-14), math.sin(t * 3) * 0.15, 0)
 	end
+	-- His mood on top of the pose (Chapter 38): suspicious, he leans in low;
+	-- frightened, he crouches and trembles, harder when panicked. Read from
+	-- his body, not from a meter. The mesh rides the body joint, so this shows.
+	local mood = m:GetAttribute("DogMood")
+	if pose ~= "sleep" and pose ~= "hide" and pose ~= "happy" then
+		if mood == "SUSPICIOUS" then
+			body *= CFrame.new(0, -0.12, -0.05) * CFrame.Angles(math.rad(-5), 0, 0)
+			wag = 0
+		elseif mood == "AFRAID" or mood == "PANICKED" then
+			local shake = if mood == "PANICKED" then 0.04 else 0.025
+			body *= CFrame.new(math.sin(t * 41) * shake, -0.35, 0.05) * CFrame.Angles(math.rad(-7), 0, 0)
+			tail = CFrame.Angles(math.rad(-50), 0, 0)
+			wag = 0
+		end
+	elseif pose == "hide" and (mood == "AFRAID" or mood == "PANICKED") then
+		body *= CFrame.new(math.sin(t * 37) * 0.015, 0, 0)
+	end
 	if speed > 0.8 then
 		body *= CFrame.new(0, math.abs(math.sin(j.phase)) * 0.08, 0)
 	end
