@@ -239,7 +239,7 @@ end
 function HouseActivityService.start()
 	for _, m in CollectionService:GetTagged("WatchedHouse") do
 		if m:IsA("Model") then
-			if m.Name == "LakeHouse" or house == nil then
+			if m.Name == "HillHouse" or house == nil then
 				if house then
 					table.insert(others, house)
 				end

@@ -626,6 +626,8 @@ local function setupProps(world: Instance)
 					phase ~= "Night" and not (phase == "Dusk" and TimeService.snapshot().phaseProgress > 0.6)
 				then
 					notify(player, "You're not tired yet. Sleep comes after dark.", "info")
+				elseif TimeService.snapshot().day == 1 and not StoryService.getFact("watcherGone") then
+					notify(player, "Not yet. Maya said to stay up until it's gone.", "warning")
 				elseif nightType == "Bad" or nightType == "Black" then
 					notify(player, "You can't sleep. Something is out there tonight.", "warning")
 				elseif not s or s.shelter == nil or not s.secure then

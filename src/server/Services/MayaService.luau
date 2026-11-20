@@ -201,22 +201,25 @@ function MayaService.start()
 		return
 	end
 	house = h
-	npc = buildNpc(h)
-	-- Without a rig the prompt sits on her table, so the visit still counts.
-	local anchor: Instance? = if npc then npc.PrimaryPart else h:FindFirstChild("Table")
-	if anchor then
-		local prompt = Builder.prompt(anchor, "Talk", "Maya", 0, 10)
-		prompt.Name = "MayaPrompt"
-		prompt.Triggered:Connect(function(player)
-			local r = PlayerService.root(player)
-			if r and anchor:IsA("BasePart") and (r.Position - anchor.Position).Magnitude < 14 then
-				onTalk(player)
-			end
-		end)
-	end
-	local snap = TimeService.snapshot()
-	MayaService.goTo(if snap.phase == "Day" then "Kitchen" else "Window")
 	TimeService.onPhaseChanged(onPhase)
+	-- Building the rig loads catalog assets and yields: keep server start fast.
+	task.spawn(function()
+		npc = buildNpc(h)
+		-- Without a rig the prompt sits on her table, so the visit still counts.
+		local anchor: Instance? = if npc then npc.PrimaryPart else h:FindFirstChild("Table")
+		if anchor then
+			local prompt = Builder.prompt(anchor, "Talk", "Maya", 0, 10)
+			prompt.Name = "MayaPrompt"
+			prompt.Triggered:Connect(function(player)
+				local r = PlayerService.root(player)
+				if r and anchor:IsA("BasePart") and (r.Position - anchor.Position).Magnitude < 14 then
+					onTalk(player)
+				end
+			end)
+		end
+		local snap = TimeService.snapshot()
+		MayaService.goTo(if snap.phase == "Day" then "Kitchen" else "Window")
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		talking[player] = nil
 	end)

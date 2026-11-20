@@ -198,9 +198,9 @@ function Landmarks.lakeHouse(parent: Instance): Model
 	end
 	-- Where Maya stands through her day. Front faces the cabin (+z).
 	spot(m, "Kitchen", o * CFrame.new(4, 0, -4.5) * CFrame.Angles(0, math.pi, 0))
-	spot(m, "Window", o * CFrame.new(-5, 0, dp / 2 - 2))
+	spot(m, "Window", o * CFrame.new(-5, 0, dp / 2 - 2) * CFrame.Angles(0, math.pi, 0))
 	spot(m, "Porch", o * CFrame.new(wd / 2 + 4, 0, 0.5) * CFrame.Angles(0, -math.pi / 2, 0))
-	spot(m, "Upstairs", o * CFrame.new(5, fh + 0.3, dp / 2 - 2))
+	spot(m, "Upstairs", o * CFrame.new(5, fh + 0.3, dp / 2 - 2) * CFrame.Angles(0, math.pi, 0))
 	-- Interior volume
 	local vol = Builder.part({
 		name = "Interior",

@@ -9,6 +9,7 @@
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local CreatureBrain = require(ReplicatedStorage.Shared.Logic.CreatureBrain)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Creature = require(script.Parent.Parent.Creatures.Creature)
 local CreatureService = require(script.Parent.CreatureService)
@@ -106,6 +107,8 @@ local function firstWatcher()
 		waitFor(function()
 			return fact("homeAtDusk1")
 		end, 60)
+		-- Inside or not, the story moves on to the lesson.
+		StoryService.setFact("homeAtDusk1", true)
 	end
 	local home = CreatureService.edgePoint(0, 85)
 	local far: { Vector3 } = {}
@@ -115,73 +118,119 @@ local function firstWatcher()
 	local c = CreatureService.spawn(
 		"Watcher",
 		home,
-		{ patrol = far, leash = 95, retreatTo = CreatureService.edgePoint(0, 300) }
+		{ patrol = far, leash = 95, retreatTo = CreatureService.edgePoint(75, 240) }
 	)
 	MayaService.setRoom("Upstairs", false)
 	MayaService.setRoom("Downstairs", false)
 
-	-- Forgiving: if it starts hunting someone, it loses them after a moment.
-	local lastSave = 0
-	local function guard()
-		if c.state == "HUNT" and os.clock() - lastSave > 20 then
-			lastSave = os.clock()
-			Creature.flee(c, 6)
-			MayaService.radio("Don't move! ...Okay. Okay. It lost you.")
-		end
-	end
-
-	task.wait(6)
-	MayaService.radio("Hey. Don't panic. Something's walking along the treeline north of you.")
-	task.wait(4)
-	MayaService.radio("Look out your north window. Slowly.")
-	waitFor(function()
-		return c.observedFor > 0.5 or anyPlayer(function(s)
-			return s.observing ~= nil
-		end)
-	end, 45, guard)
-	StoryService.setFact("watcherSeen", true)
-
-	MayaService.radio("That's a Watcher. Light and movement draw them. Stillness doesn't.")
-	task.wait(4)
-	MayaService.radio("Put on your grandfather's coat. Slowly.")
-	waitFor(function()
-		return anyPlayer(function(s)
-			return s.coat
-		end)
-	end, 600, guard)
-	StoryService.setFact("tutorialCoat", true)
-
-	MayaService.radio("Good. Now go dark. The fuse box by the door kills every light. Then the curtains.")
-	local nudged = false
-	waitFor(
-		function()
-			local electric = LightService.shelterLights("Cabin")
-			return electric == 0 and cabinCurtainsClosed()
-		end,
-		600,
-		function()
-			guard()
-			if not nudged and LightService.shelterLights("Cabin") == 0 and not cabinCurtainsClosed() then
-				nudged = true
-				MayaService.radio("The curtains too. Every window.")
+	-- Forgiving: while the lesson runs, a hunt is always broken off (the same
+	-- reset the leash uses), so the first night can't end in a capture.
+	local lessonOn = true
+	task.spawn(function()
+		local lastLine = 0
+		while lessonOn and alive(c) do
+			if c.brain.state == "HUNT" then
+				CreatureBrain.forget(c.brain)
+				c.brain.state = "PATROL"
+				if os.clock() - lastLine > 20 then
+					lastLine = os.clock()
+					MayaService.radio("Don't move! ...Okay. Okay. It lost you.")
+				end
 			end
+			task.wait(0.25)
 		end
-	)
-	StoryService.setFact("tutorialDark", true)
+	end)
 
-	-- Now it comes to the house and looks. The window behaviour is its own.
-	local near: { Vector3 } = {}
-	for i = 1, 4 do
-		table.insert(near, CreatureService.edgePoint((i - 2.5) * 18, 22 + (i % 2) * 6))
+	-- The lesson stops early if the night ends or the Watcher leaves.
+	local function over(): boolean
+		return not alive(c) or TimeService.snapshot().phase ~= "Night"
 	end
-	c.patrol = near
-	c.goal = nil
-	MayaService.radio("It's coming closer. Crouch. Stay still.")
-	task.wait(5)
-	MayaService.radio("If it's right at the glass, hold your breath.")
-	waitFor(function()
-		return not alive(c)
-	end, 45, guard)
+	local function step(done: () -> boolean, timeout: number, tick: (() -> ())?): boolean
+		waitFor(function()
+			return done() or over()
+		end, timeout, tick)
+		return not over()
+	end
+	local function pause(seconds: number): boolean
+		return step(function()
+			return false
+		end, seconds)
+	end
+
+	local function lesson()
+		if not pause(6) then
+			return
+		end
+		MayaService.radio("Hey. Don't panic. Something's walking along the treeline north of you.")
+		if not pause(4) then
+			return
+		end
+		MayaService.radio("Look out your north window. Slowly.")
+		if
+			not step(function()
+				return c.observedFor > 0.5 or anyPlayer(function(s)
+					return s.observing ~= nil
+				end)
+			end, 45)
+		then
+			return
+		end
+		StoryService.setFact("watcherSeen", true)
+
+		MayaService.radio("That's a Watcher. Light and movement draw them. Stillness doesn't.")
+		if not pause(4) then
+			return
+		end
+		MayaService.radio("Put on your grandfather's coat. Slowly.")
+		if not step(function()
+			return anyPlayer(function(s)
+				return s.coat
+			end)
+		end, 600) then
+			return
+		end
+		StoryService.setFact("tutorialCoat", true)
+
+		MayaService.radio("Good. Now go dark. The fuse box by the door kills every light. Then the curtains.")
+		local nudged = false
+		if
+			not step(
+				function()
+					return LightService.shelterLights("Cabin") == 0 and cabinCurtainsClosed()
+				end,
+				600,
+				function()
+					if
+						not nudged
+						and LightService.shelterLights("Cabin") == 0
+						and not cabinCurtainsClosed()
+					then
+						nudged = true
+						MayaService.radio("The curtains too. Every window.")
+					end
+				end
+			)
+		then
+			return
+		end
+		StoryService.setFact("tutorialDark", true)
+
+		-- Now it comes to the house and looks. The window behaviour is its own.
+		local near: { Vector3 } = {}
+		for i = 1, 4 do
+			table.insert(near, CreatureService.edgePoint((i - 2.5) * 18, 22 + (i % 2) * 6))
+		end
+		c.patrol = near
+		c.goal = nil
+		MayaService.radio("It's coming closer. Crouch. Stay still.")
+		if not pause(5) then
+			return
+		end
+		MayaService.radio("If it's right at the glass, hold your breath.")
+		pause(45)
+	end
+	lesson()
+	lessonOn = false
 
 	if alive(c) then
 		Creature.flee(c, 400)
@@ -192,7 +241,13 @@ local function firstWatcher()
 			CreatureService.remove(c)
 		end
 	end
-	StoryService.setFact("watcherGone", true)
+	-- Whatever was skipped, the story never waits on the lesson.
+	for _, key in { "watcherSeen", "tutorialCoat", "tutorialDark", "watcherGone" } do
+		StoryService.setFact(key, true)
+	end
+	if TimeService.snapshot().phase ~= "Night" then
+		return -- dawn came first: no rain-and-lamp beat in daylight
+	end
 	WeatherService.force("Rain")
 	task.wait(6)
 	MayaService.setRoom("Upstairs", true)

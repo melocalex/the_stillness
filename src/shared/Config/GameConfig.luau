@@ -144,7 +144,8 @@ GameConfig.Dog = {
 	BarkCooldown = 18,
 }
 
--- The house across the lake. Fractions are of the Night phase.
+-- The watched house on the hill (HillHouse; Maya lives in the lake house
+-- now). Fractions are of the Night phase.
 GameConfig.LakeHouse = {
 	nights = {
 		[1] = {
@@ -152,7 +153,7 @@ GameConfig.LakeHouse = {
 			{
 				at = 0.3,
 				action = "silhouetteCross",
-				note = "A figure crossed the upstairs window of the house across the lake.",
+				note = "A figure crossed the upstairs window of the house on the hill.",
 			},
 			{ at = 0.55, action = "silhouetteCross" },
 			{ at = 0.82, action = "allOff" },
@@ -163,7 +164,7 @@ GameConfig.LakeHouse = {
 			{
 				at = 0.35,
 				action = "figureStand",
-				note = "Someone stood in the upstairs window of the lake house for a long time. Facing this way.",
+				note = "Someone stood in the upstairs window of the hill house for a long time. Facing this way.",
 			},
 			{ at = 0.62, action = "figureLeave" },
 		},
@@ -179,13 +180,13 @@ GameConfig.LakeHouse = {
 		{
 			at = 0.22,
 			action = "creaturesApproach",
-			note = "Several shapes left the treeline and gathered around the lake house.",
+			note = "Several shapes left the treeline and gathered around the hill house.",
 		},
 		{ at = 0.3, action = "flicker" },
 		{
 			at = 0.34,
 			action = "windowBreak",
-			note = "A window broke at the lake house. Its lights went out.",
+			note = "A window broke at the hill house. Its lights went out.",
 		},
 		{ at = 0.35, action = "allOff" },
 		{ at = 0.45, action = "interiorMovement" },
