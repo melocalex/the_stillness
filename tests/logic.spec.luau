@@ -1556,6 +1556,8 @@ describe("RadioConfig", function()
 	end)
 end)
 
+require("./progression.spec")
+
 if not t.report() then
 	process.exit(1)
 end
