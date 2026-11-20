@@ -107,6 +107,41 @@ game. In the built place:
 
 Build two commits, open each in Studio and screenshot the same camera.
 
+### Chapter 37: progression
+
+The Studio command bar cannot reach live game modules (its `require()`
+returns fresh copies). In Studio only, the server creates
+`ServerStorage.StillnessDebug`; use it from the command bar in the Server
+view (paste from the clipboard, then click Run):
+
+```lua
+local D = game.ServerStorage.StillnessDebug
+print(D:Invoke("give", "Wood", 8))
+print(D:Invoke("goto", "npc:frank"))   -- npc:, site:, project:, interact:, missing:
+print(D:Invoke("state"))               -- quests, credits, projects, flags
+print(D:Invoke("rejoin"))              -- save data through JSON into a fresh state
+print(D:Invoke("incident", "fallen_branch"))
+print(D:Invoke("phase", "Dusk"))
+```
+
+Keys: E talks, F uses things (stove, scarf, table, repairs, the mast),
+R opens a counter, G opens the dog panel (Find it, practice), J the Life
+Journal.
+
+Prompts only trigger while they are on screen. After a `goto`, turn the
+camera (arrow keys) until the prompt shows.
+
+- [x] Frank: talk, collect, three repairs change the shed, talk pays out
+- [x] Ellen: cook at the stove (F), serve; the windows light at dusk; her counter sells
+- [x] Martha: talk starts it, Find it starts tracking, the final talk pays out
+- [ ] Martha: press F at the scarf on purpose; see paw prints and scent on the trail; see Biscuit follow and sleep on the porch
+- [x] Maya: trellis stages, show her, bring a stew, supper at her table before night
+- [x] Dr. Hale: hike, inspect, cups and wiring, the cups spin, forecast on the next morning's radio
+- [x] `rejoin` keeps quests, credits, projects and flags
+- [ ] Sites sit on dry ground after the water fix (look for "[Town] ... moved off water")
+- [ ] An incident can be cleared and pays a small, capped amount
+- [x] Life Journal HOME, TOWN, PEOPLE and MYSTERIES show real progress
+
 ## Performance
 
 Report measured numbers only (Studio **View > Stats / MicroProfiler**).
