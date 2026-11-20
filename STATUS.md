@@ -19,11 +19,19 @@ in Studio.
 
 ## Chapter 37 progression (branch `feat/progression`, 2026-11-20)
 
+Since the playtests below, the branch was rebased onto `main` (terrain,
+Chaoscope, Chapter 38 dog AI), Caramelo's part was narrowed to Martha's
+trail (`DogTracking`; the old dog-panel Find it and practice buttons are
+gone), the weather station and Martha's cottage were made taller, and the
+quest framework gained campaign objectives, evidence, alternatives and a
+shared town. **None of that has been booted in Studio**; it passes the
+gate (150 + 18 tests).
+
 Studio-verified (two playtests of `feat/progression` builds db74813 and
-earlier, 2026-11-20). Items, teleports and time skips came from the
-Studio-only debug hook (`docs/TESTING.md`); every talk, repair, cook,
-scarf, table, shop and dog command went through the real prompts and
-panels:
+earlier, before the rebase, 2026-11-20). Items, teleports and time skips
+came from the Studio-only debug hook (`docs/TESTING.md`); every talk,
+repair, cook, scarf, table, shop and dog command went through the real
+prompts and panels:
 
 - Server starts with the new sites and services and logs no error from
   them; world built in 6.3 to 8.7 s.
@@ -39,11 +47,11 @@ panels:
   - Ellen: collect, cook at the stove (F), serve. "+10 credits +8
     reputation". The burner and ceiling lamp light at once, and at dusk her
     windows glow.
-  - Martha: Talk starts it; Find it starts tracking; the final Talk pays
-    "+10 credits +8 reputation". The steps in between completed as
-    objectives (scarf, Biscuit located, brought home), but Biscuit was
-    never on screen, and the scarf step completed without a deliberate F
-    press (see below).
+  - Martha (old tracking code): Talk starts it; the final Talk pays "+10
+    credits +8 reputation". The steps in between completed as objectives
+    (scarf, Biscuit located, brought home), but Biscuit was never on
+    screen, and the scarf step completed without a deliberate F press (see
+    below). Tracking has since been rewritten as `DogTracking`.
   - Maya: lunch, then the trellis quest. Two repairs turn the flattened
     bed into a framed trellis with green vines and flowers. Showing her
     pays "+3 reputation +2 Berries" plus her garden gift. Then she asks for
@@ -60,12 +68,12 @@ panels:
 - The radio card names "DR. HALE".
 - Ellen's counter lists stew, berries and a mushroom; buying a stew takes 10
   credits down to 6 and the toast confirms it.
-- The dog panel has Find it and practice buttons; Find it started tracking
-  ("Caramelo waits for you, ears up, then looks ahead").
+- The old tracking started and waited for the player ("Caramelo waits for
+  you, ears up, then looks ahead").
 - Rejoin path: `StillnessDebug:Invoke("rejoin")` sent the live state (1,342
   bytes) through JSON into a fresh state. The summary before and after was
   identical: 46 credits, 45 reputation, six quests done, all three projects
-  restored, the same seven flags, Find it level 1.
+  restored, the same seven flags.
 - Day 2: the incident director posted "A fallen branch blocks a trail" in
   the journal. On day 3 Dr. Hale radioed the morning forecast ("Tonight
   feels restless. Curtains drawn, I'd say."), which is right for the
@@ -75,8 +83,12 @@ panels:
   with what they opened), PEOPLE (Maya's three milestones done, trust per
   neighbour), MYSTERIES (the two optional research quests, observations).
 
-Found in the playtests and fixed afterwards. Commits 71fb2c4 and 9430503
-have not been booted in Studio:
+Found in the playtests and fixed afterwards, not yet booted:
+
+- Dr. Hale looked taller than the weather station (an 8-stud hut with its
+  sign at head height in front of him). The station is now 10 studs to the
+  eaves, 9 under the porch, with the sign on top of the awning; Martha's
+  cottage got the same headroom.
 
 - In the old terrain, Martha's porch and the old wood shed stood in a
   creek. Sites now search outward for a dry footprint.
@@ -91,7 +103,7 @@ Unexplained, seen once: the scarf step completed right after Martha's
 quest started, without a deliberate F press. Not reproduced.
 
 Automated tests (`tests/progression.spec.luau`, called from
-`tests/logic.spec.luau`; 106 tests in all):
+`tests/logic.spec.luau`; 150 + 18 tests in all after the rebase):
 
 - Every objective component, phase limits, target matching, progress text.
 - Quest prerequisites, ordered objectives, consequences, follow-ups opening,
@@ -101,7 +113,15 @@ Automated tests (`tests/progression.spec.luau`, called from
 - Restoration stages, finishing twice pays nothing, union of players.
 - Incident eligibility, cooldowns, daily budget, weighted choice; a peaceful
   errand exists on a plain day.
-- Training rest, maximum, quest-taught Find it, tracking range.
+- Martha's reward raises Tracking by one, once.
+- Campaign framework: inspect, escort, track, communicate, activate,
+  coordinate and survive objectives; evidence counted once per quest, also
+  after a JSON save; evidence that moves nothing is not burned;
+  alternatives complete a step, record the choice and set its flag, with
+  partial progress surviving a save.
+- SharedTown: only moves forward, merges two servers' saves without loss,
+  readiness summary, JSON round trip, rejects bad data, town-scope projects
+  advance shared buildings.
 - Dialogue changes after a mission and with trust.
 - Config integrity: every NPC, item, site, interaction, project, creature
   and weather named by a quest resolves; repair quests ask for exactly what
@@ -115,13 +135,13 @@ Implemented, not Studio-verified:
 - A real DataStore rejoin. An unpublished local place has no DataStore, so
   only the in-game snapshot, JSON and restore path above ran. The section
   is written in the same `SetAsync` as the inventory.
-- Seeing the paw prints and the scent particles while Caramelo tracks.
-  Tracking started, but the camera never caught the trail.
-- Biscuit sleeping on Martha's porch, and her porch lantern.
-- Find it leading to mushrooms and berries after the quest.
-- The training buttons, Maya's night radio line, the optional rain log and
-  Watcher notes, and clearing an incident (the branch was posted but not
-  cleared).
+- `DogTracking`: the scarf starting the trail, paw prints and scent,
+  waiting, stuck recovery, hiding taking over, Biscuit found and following
+  home and asleep on the porch, her lantern.
+- `SharedTownService` saving and merging across servers (no DataStore in a
+  local place), and any town-scope project (none exists in the slice).
+- Maya's night radio line, the optional rain log and Watcher notes, and
+  clearing an incident (the branch was posted but not cleared).
 - Multiplayer: the world shows the furthest stage held by the players
   present. Only one player was tested.
 - Walking the whole route on foot at normal speed. Teleports were used.

@@ -125,16 +125,20 @@ print(D:Invoke("phase", "Dusk"))
 ```
 
 Keys: E talks, F uses things (stove, scarf, table, repairs, the mast),
-R opens a counter, G opens the dog panel (Find it, practice), J the Life
-Journal.
+R opens a counter, J the Life Journal.
 
 Prompts only trigger while they are on screen. After a `goto`, turn the
 camera (arrow keys) until the prompt shows.
 
+Items marked [x] were seen before the rebase onto main (build db74813);
+everything since (the rebase, the DogTracking rewrite, the taller station,
+the framework additions) has only passed the gate.
+
 - [x] Frank: talk, collect, three repairs change the shed, talk pays out
 - [x] Ellen: cook at the stove (F), serve; the windows light at dusk; her counter sells
-- [x] Martha: talk starts it, Find it starts tracking, the final talk pays out
-- [ ] Martha: press F at the scarf on purpose; see paw prints and scent on the trail; see Biscuit follow and sleep on the porch
+- [x] Martha (old build): talk starts it, the final talk pays out
+- [ ] Martha: F at the scarf with Caramelo close starts the trail; paw prints and scent show; he waits when ahead; Biscuit found near the old wood shed follows home and sleeps on the porch; Tracking 1/3 in the journal
+- [ ] Dr. Hale stands clearly under the station's porch and sign; Martha under hers
 - [x] Maya: trellis stages, show her, bring a stew, supper at her table before night
 - [x] Dr. Hale: hike, inspect, cups and wiring, the cups spin, forecast on the next morning's radio
 - [x] `rejoin` keeps quests, credits, projects and flags

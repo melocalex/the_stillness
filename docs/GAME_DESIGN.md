@@ -276,6 +276,16 @@ creature, endure weather while sheltered, investigate a site, locate a
 missing NPC or animal. The server validates every one: positions, prompts
 and inventory are checked there, never trusted from the client.
 
+For the Protector (Chapter 39) and Observer (Chapter 40) campaigns the same
+framework also has inspect, escort, track, communicate, activate,
+coordinate and survive objectives. An event may carry an evidence id (an
+observation passes its journal entry id), and each id counts once per
+quest, even after a rejoin, so the same sighting never pays twice. A step
+may list alternatives (`anyOf`): any one completes it, for example repair
+the truck or lead the residents to the shelter, and the chosen
+alternative's flag records which. None of the slice's missions needs these
+yet; specs cover them.
+
 **Pinehaven standing** (`Logic/Town`): reputation with five tiers
 (Stranger, Newcomer, Neighbour, Friend of Pinehaven, One of Pinehaven),
 Pinehaven Credits, and trust 0-10 per NPC. A quest or a finished project
@@ -306,7 +316,7 @@ flags and trust (`Logic/Dialogue`), so it changes after each mission.
 | --- | --- | --- |
 | Frank's tool shed | collect 8 wood, repair the shed (3 actions), talk | Shed restored, counter restocks, 2 scrap, opens Dr. Hale's mission |
 | A warm plate at the diner | collect 2 berries and a mushroom, cook at Ellen's stove (the stew recipe), talk | Diner open: sign and windows lit, shop, a basket incident |
-| Biscuit is missing | let Caramelo smell the scarf, find Biscuit, bring him home, talk | Caramelo learns Find it; Biscuit sleeps on Martha's porch, her lantern lit |
+| Biscuit is missing | let Caramelo smell the scarf (he follows the trail), find Biscuit near the old wood shed, bring him home, talk | Caramelo's Tracking +1; Biscuit sleeps on Martha's porch, her lantern lit |
 | Maya's trellis, then supper | collect 4 wood and 2 fiber, rebuild the trellis (2 actions), show her; then bring a stew and sit at her table before night | Garden blooms, berries from her garden once a day, shared-meal milestone, a comfort boost, a night radio line |
 | The silent anemometer | hike to the mast, inspect it, collect 2 scrap and 1 fiber, repair (2 actions), report | Morning forecast on the radio: tonight's night type and the weather |
 
@@ -320,13 +330,15 @@ milestones (lunch, garden, supper) shown in the PEOPLE tab. She thanks the
 player in person and sometimes on the radio at night. There are no forced
 rescues.
 
-**Caramelo.** Martha's scarf teaches him Find it: in the dog panel he leads
-toward the target nose-down, leaving paw prints and a faint scent trail,
-waits when he gets ahead, comes back when stuck, gives up gently after a
-while. Without a quest scent, Find it leads to the nearest mushrooms or
-berries in range. Optional practice (Sit, Stay, Find it, a rest between
-sessions, three levels each) raises the Find it range and counts as time
-with the dog for comfort. Nothing decays and nothing punishes ignoring him.
+**Caramelo.** Chapter 38 (DogService, DogMind on `main`) owns the dog's
+behaviour, emotions, barking, hiding and training. Chapter 37 adds only the
+tracking interaction for Martha's mission: when he smells Biscuit's scarf
+(F, with him close), `DogTracking` leads him toward Biscuit nose-down,
+leaving paw prints and a faint scent trail. He waits when he gets ahead,
+comes back when stuck, and gives up gently after a while; smelling the
+scarf again restarts the trail. Hiding with the owner always wins. The
+mission's reward raises his saved Tracking skill by one. Nothing punishes
+ignoring him.
 
 **Incident director** (`Logic/Incidents`): from day 2, at the start of the
 day and again at midday, one eligible incident is chosen by weight with
@@ -347,7 +359,18 @@ the inventory, written in the same DataStore call. A save that fails to
 load is never written over. The world shows the furthest restoration stage
 and every flag held by the players present, applied on load, so a rejoin
 shows the same town. Positions of the new sites are in `TownConfig.Sites`
-and follow the terrain by raycast, so the valley layout can move them.
+and follow the terrain by raycast (moving off water), so the valley layout
+can move them.
+
+**Per player and shared town.** Each player's quests, standing, personal
+projects and Caramelo's Tracking skill live in that player's save. The
+slice's three repairs are personal: every player fixes Frank's shed in
+their own story. What belongs to the whole town (community buildings,
+opened routes, town flags) lives in `SharedTown`, a separate DataStore key
+for every server. It only moves forward and merges with what is stored
+(UpdateAsync), so two servers never erase each other. A restoration project
+marked `scope = "town"` reads and advances the shared town instead of a
+player's save. Readiness is only a summary of those real pieces.
 
 ## Design chapters
 
