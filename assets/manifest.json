@@ -124,9 +124,9 @@
         "processed": true,
         "imported": true,
         "integrated": true,
-        "tested": false
+        "tested": true
       },
-      "notes": "0 scripts after sanitize; see docs/ASSET_LICENSES.md"
+      "notes": "0 scripts; tinted caramel; seen following and being petted in Studio 2026-11-20"
     },
     {
       "name": "Deer",
@@ -353,11 +353,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "wolvesDistant",
@@ -1235,11 +1235,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "rainOnWindow2",
@@ -1256,11 +1256,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "rainGutter",
@@ -1277,11 +1277,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "dripBucket",
@@ -1298,11 +1298,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "dripPuddle",
@@ -1319,11 +1319,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "windTrees",
@@ -1340,11 +1340,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "windTrees2",
@@ -1361,11 +1361,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "windGusts2",
@@ -1382,11 +1382,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "shutterBang",
@@ -1403,11 +1403,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "latchClick",
@@ -1424,11 +1424,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "glassBreak",
@@ -1445,11 +1445,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "glassBreak2",
@@ -1466,11 +1466,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "floorCreak",
@@ -1487,11 +1487,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "floorCreak2",
@@ -1508,11 +1508,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "wetFootsteps",
@@ -1529,11 +1529,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "dogGrowl",
@@ -1550,11 +1550,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "dogWhimper",
@@ -1571,11 +1571,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "exhaleSoft",
@@ -1592,11 +1592,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "thunderDistant3",
@@ -1613,11 +1613,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
+        "imported": true,
         "integrated": false,
-        "tested": false
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "thunderStrike",
@@ -1634,11 +1634,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "musicBoxUnease",
@@ -1655,11 +1655,11 @@
         "license_verified": true,
         "downloaded": false,
         "processed": false,
-        "imported": false,
-        "integrated": false,
-        "tested": false
+        "imported": true,
+        "integrated": true,
+        "tested": true
       },
-      "notes": "pending Studio load check"
+      "notes": "loaded in Studio 2026-11-20 (21/21)"
     },
     {
       "name": "musicMenu",

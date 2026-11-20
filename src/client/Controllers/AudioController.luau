@@ -164,6 +164,7 @@ local function musicTick()
 		phase = (ReplicatedStorage:GetAttribute("Phase") :: string?) or "Day",
 		sheltered = player:GetAttribute("Sheltered") == true,
 		raining = ((ReplicatedStorage:GetAttribute("RainIntensity") :: number?) or 0) > 0.6,
+		storm = ((ReplicatedStorage:GetAttribute("RainIntensity") :: number?) or 0) >= 3.4,
 		threat = threat,
 		secondsSinceThreat = os.clock() - ClientState.lastThreatTime,
 		discovery = os.clock() - ClientState.lastDiscovery < 6,

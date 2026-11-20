@@ -19,6 +19,7 @@ export type State =
 	| "DAWN"
 	| "DISCOVERY"
 	| "BLACKOUT"
+	| "STORM_NIGHT"
 
 export type Context = {
 	menu: boolean,
@@ -30,6 +31,7 @@ export type Context = {
 	discovery: boolean,
 	lightsOff: boolean,
 	badNight: boolean,
+	storm: boolean?, -- heavy rain (intensity >= 3.4)
 }
 
 function MusicState.choose(c: Context): State
@@ -50,6 +52,10 @@ function MusicState.choose(c: Context): State
 	end
 	if c.badNight and c.sheltered and c.lightsOff then
 		return "BLACKOUT"
+	end
+	-- Storm nights get the music-box motif: slow, high, slightly wrong.
+	if c.storm and c.phase == "Night" then
+		return "STORM_NIGHT"
 	end
 	if c.phase == "Dawn" then
 		return "DAWN"
