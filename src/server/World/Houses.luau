@@ -18,7 +18,6 @@ local Terrain = require(script.Parent.Terrain)
 local Houses = {}
 
 local GLOW = Color3.fromRGB(255, 196, 120)
-local DARK_GLASS = Color3.fromRGB(26, 30, 34)
 
 type Style = {
 	width: number,
@@ -152,9 +151,10 @@ local function pane(parent: Instance, cf: CFrame, w: number, h: number, room: st
 		name = "Pane",
 		size = Vector3.new(w, h, 0.3),
 		cframe = cf,
-		color = DARK_GLASS,
+		color = Builder.PaneUnlit.color,
 		material = Enum.Material.Glass,
-		transparency = 0.15,
+		transparency = Builder.PaneUnlit.transparency,
+		reflectance = Builder.PaneUnlit.reflectance,
 		canQuery = false,
 		castShadow = false,
 		parent = parent,

@@ -14,13 +14,13 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Mystery = require(ReplicatedStorage.Shared.Logic.Mystery)
 local Net = require(ReplicatedStorage.Shared.Net)
 local TimeService = require(script.Parent.TimeService)
+local Builder = require(script.Parent.Parent.World.Builder)
 
 local HouseActivityService = {}
 
 export type HouseEvent = { id: string, action: string, note: string?, time: number, position: Vector3 }
 
 local GLOW = Color3.fromRGB(255, 190, 120)
-local DARK = Color3.fromRGB(26, 30, 34)
 
 local house: Model? = nil
 local recent: { HouseEvent } = {}
@@ -51,9 +51,11 @@ local function setRoomIn(h: Model, room: string, on: boolean)
 		if d:GetAttribute("Room") == room then
 			if d:IsA("BasePart") and CollectionService:HasTag(d, "HousePane") then
 				if d:GetAttribute("Broken") ~= true then
+					local unlit = Builder.PaneUnlit
 					d.Material = if on then Enum.Material.Neon else Enum.Material.Glass
-					d.Color = if on then GLOW else DARK
-					d.Transparency = if on then 0.25 else 0.15
+					d.Color = if on then GLOW else unlit.color
+					d.Transparency = if on then 0.25 else unlit.transparency
+					d.Reflectance = if on then 0 else unlit.reflectance
 				end
 			elseif d:IsA("BasePart") then
 				local l = d:FindFirstChildWhichIsA("PointLight")

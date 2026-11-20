@@ -3,6 +3,11 @@
 
 local Builder = {}
 
+-- House window glass while the room is dark: grey-blue and a little
+-- reflective by day, dark at night from the lighting alone. (Near-black
+-- glass read as holes in the walls in daylight.)
+Builder.PaneUnlit = { color = Color3.fromRGB(96, 112, 122), transparency = 0.3, reflectance = 0.2 }
+
 export type PartProps = {
 	name: string?,
 	size: Vector3,

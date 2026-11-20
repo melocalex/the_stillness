@@ -16,7 +16,6 @@ local W = WorldConfig
 local SIDING = Color3.fromRGB(122, 116, 104)
 local SIDING_DARK = Color3.fromRGB(70, 66, 62)
 local GLOW = Color3.fromRGB(255, 196, 120)
-local DARK_GLASS = Color3.fromRGB(26, 30, 34)
 
 local function box(
 	parent: Instance,
@@ -42,9 +41,10 @@ local function pane(parent: Instance, name: string, cf: CFrame, w: number, h: nu
 		name = name,
 		size = Vector3.new(w, h, 0.3),
 		cframe = cf,
-		color = DARK_GLASS,
+		color = Builder.PaneUnlit.color,
 		material = Enum.Material.Glass,
-		transparency = 0.15,
+		transparency = Builder.PaneUnlit.transparency,
+		reflectance = Builder.PaneUnlit.reflectance,
 		canQuery = false,
 		castShadow = false,
 		parent = parent,

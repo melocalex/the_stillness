@@ -43,6 +43,8 @@ type Animal = {
 	baseTransparency: { [BasePart]: number },
 	yawOffset: number,
 	lift: number,
+	foot: number, -- pivot height above the hooves or paws
+	phase: number, -- gait
 }
 
 export type Threat = { position: Vector3, radius: number }
@@ -141,8 +143,41 @@ local function makeModel(kind: Kind): Model
 	return procedural(kind)
 end
 
+-- The real terrain surface, not the height formula: voxels round the ground
+-- off higher in places, which buried legs up to the knees.
+local groundParams = RaycastParams.new()
+groundParams.FilterType = Enum.RaycastFilterType.Include
+groundParams.FilterDescendantsInstances = { workspace.Terrain }
+groundParams.IgnoreWater = true
+
 local function groundAt(pos: Vector3): number
-	return Terrain.heightAt(pos.X, pos.Z)
+	local guess = Terrain.heightAt(pos.X, pos.Z)
+	local hit =
+		workspace:Raycast(Vector3.new(pos.X, guess + 60, pos.Z), Vector3.new(0, -160, 0), groundParams)
+	return if hit then hit.Position.Y else guess
+end
+
+-- From the pivot down to the lowest visible point, measured once from the
+-- real meshes (some packs carry tiny helper parts away from the body).
+local function footOffset(m: Model): number
+	local pivot = m:GetPivot()
+	m:PivotTo(CFrame.new(pivot.Position))
+	local pivotY = pivot.Position.Y
+	local lowest = math.huge
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and d.Size.Magnitude > 0.5 and d.Transparency < 1 then
+			local h = d.Size / 2
+			for _, sx in { -1, 1 } do
+				for _, sy in { -1, 1 } do
+					for _, sz in { -1, 1 } do
+						local corner = d.CFrame:PointToWorldSpace(Vector3.new(sx * h.X, sy * h.Y, sz * h.Z))
+						lowest = math.min(lowest, corner.Y)
+					end
+				end
+			end
+		end
+	end
+	return if lowest < math.huge then pivotY - lowest else 0
 end
 
 local function spawnAnimal(kind: Kind, home: Vector3)
@@ -166,6 +201,8 @@ local function spawnAnimal(kind: Kind, home: Vector3)
 		baseTransparency = {},
 		yawOffset = spec.yawOffset,
 		lift = spec.lift,
+		foot = footOffset(m),
+		phase = math.random() * math.pi * 2,
 	}
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then
@@ -177,17 +214,22 @@ local function spawnAnimal(kind: Kind, home: Vector3)
 	table.insert(animals, a)
 end
 
-local function pose(a: Animal)
-	local _, size = a.model:GetBoundingBox()
+local function pose(a: Animal, dt: number?)
 	local ground = groundAt(a.pos)
 	local y = if a.state == "fly" then a.pos.Y else ground + a.lift
 	a.pos = Vector3.new(a.pos.X, y, a.pos.Z)
-	local cf = CFrame.new(a.pos.X, y, a.pos.Z) * CFrame.Angles(0, a.yaw + a.yawOffset, 0)
-	-- Keep the model's bounding-box bottom on the ground.
-	local bboxCF = a.model:GetBoundingBox()
-	local pivot = a.model:GetPivot()
-	local bottomOffset = (bboxCF.Position.Y - size.Y / 2) - pivot.Position.Y
-	a.model:PivotTo(cf * CFrame.new(0, -bottomOffset, 0))
+	-- The deer is one rigid mesh and cannot move its legs; a gait bob that
+	-- follows its speed keeps it from gliding like a statue.
+	local moving = a.state == "move" or a.state == "flee" or a.state == "leaving"
+	a.phase += (dt or 0) * (if moving then 2 + a.speed * 0.8 else 0)
+	local bob = if moving and a.state ~= "fly"
+		then math.abs(math.sin(a.phase)) * math.clamp(a.speed / 12, 0.05, 0.3)
+		else 0
+	a.model:PivotTo(
+		CFrame.new(a.pos.X, y + a.foot + bob, a.pos.Z)
+			* CFrame.Angles(0, a.yaw + a.yawOffset, 0)
+			* CFrame.Angles(if moving then math.sin(a.phase * 2) * 0.025 else 0, 0, 0)
+	)
 end
 
 local function threats(): { Threat }
@@ -347,7 +389,7 @@ local function step(dt: number)
 			moveToward(a, dt, target, a.speed)
 			a.pos = Vector3.new(a.pos.X, math.min(a.pos.Y + dt * 14, groundAt(a.pos) + 70), a.pos.Z)
 		end
-		pose(a)
+		pose(a, dt)
 	end
 end
 
