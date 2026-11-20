@@ -86,6 +86,8 @@ Chapter 35, the unnatural creatures (ca7b018, 8287b7e):
   fictional signals, creatures feeding within 90 studs).
 - The window encounter (another window, tapping), false departures, and
   Maya darkening her house when something is near the cabin (e45a3db).
+- Night stories for Peaceful and Uneasy nights (933d919) and Caramelo's
+  frightened body language (f79fb37).
 - The radio drawing every line from what is happening (569ea4e).
 
 Chapter 38, Caramelo (ac163c4, 638d6d1):

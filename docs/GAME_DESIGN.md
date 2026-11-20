@@ -108,6 +108,17 @@ frightening only because it is rare.
 - **Temperaments** (Patient, Impulsive, Curious, Deceiver, Hungry) are small
   multipliers on those choices; species rules still apply.
 
+### Nights have stories
+
+Peaceful and Uneasy nights each tell one coherent story, chosen by weight
+(`GameConfig.NightStories`) and never repeated within two nights except
+quiet: nothing at all; a Watcher that stands at the treeline for a long
+time; a visit to the house and its windows (Uneasy only); a Watcher
+interested in the hill house rather than you; one that walks a far arc and
+moves on; or Maya's lamp and radio going dark with no creature at all, and
+an apology at dawn. Bad and Black nights keep their danger profiles. The
+director knows when to do nothing: half of all peaceful nights are quiet.
+
 ### Caramelo (Chapter 38)
 
 He senses creatures with his own ears, eyes and a nose for presence, before
