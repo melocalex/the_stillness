@@ -22,6 +22,9 @@ local Mystery = require("../src/shared/Logic/Mystery")
 local Breath = require("../src/shared/Logic/Breath")
 local FearEcology = require("../src/shared/Logic/FearEcology")
 local DogMind = require("../src/shared/Logic/DogMind")
+local ChaosField = require("../src/shared/Logic/ChaosField")
+local Dissonance = require("../src/shared/Logic/Dissonance")
+local DissonanceConfig = require("../src/shared/Config/DissonanceConfig")
 local AudioConfig = require("../src/shared/Config/AudioConfig")
 local GameConfig = require("../src/shared/Config/GameConfig")
 local CreatureConfig = require("../src/shared/Config/CreatureConfig")
@@ -726,6 +729,504 @@ describe("AudioConfig", function()
 		end
 		for _, id in AudioConfig.Cues do
 			check(id)
+		end
+	end)
+end)
+
+-- Seeded standard normal samples for the field specs.
+local function gaussFrom(seed: number): () -> number
+	local state = seed
+	local function uniform(): number
+		state = (state * 48271) % 2147483647
+		return state / 2147483647
+	end
+	return function(): number
+		local u1 = math.max(uniform(), 1e-9)
+		local u2 = uniform()
+		return math.sqrt(-2 * math.log(u1)) * math.cos(2 * math.pi * u2)
+	end
+end
+
+local FC = DissonanceConfig.Field
+local MODES = DissonanceConfig.Modes
+local LEVELS = DissonanceConfig.Levels
+local RULES = DissonanceConfig.LevelRules
+local SENS = DissonanceConfig.Sensitivity
+local HOME = { x = 0, z = 0 }
+
+local function quietEnv(over: { [string]: any }?): ChaosField.Env
+	local env: { [string]: any } = { rain = 0, night = 1, collective = 0, creatures = {}, sources = {} }
+	for k, v in over or {} do
+		env[k] = v
+	end
+	return env :: any
+end
+
+local function run(field: ChaosField.Field, seconds: number, env: ChaosField.Env, seed: number)
+	local g = gaussFrom(seed)
+	for _ = 1, seconds do
+		ChaosField.step(field, 1, env, g)
+	end
+end
+
+local function levelAt(
+	field: ChaosField.Field,
+	mode: string,
+	sens: number,
+	noise: number
+): (string, ChaosField.Reading)
+	local r = ChaosField.read(field, HOME.x, HOME.z, MODES[mode], sens, SENS.min, SENS.max, noise)
+	return ChaosField.level(LEVELS, RULES, r.ceu, r.uncertainty, nil), r
+end
+
+local function idx(name: string): number
+	return ChaosField.levelIndex(LEVELS, name)
+end
+
+describe("ChaosField", function()
+	it("covers the map with sectors and maps positions to them", function()
+		local f = ChaosField.new(FC)
+		eq(#f.list, f.cols * f.cols)
+		local s = ChaosField.sectorAt(f, 5, -5)
+		truthy(math.abs(s.x - 5) <= FC.sectorSize / 2 and math.abs(s.z + 5) <= FC.sectorSize / 2)
+		eq(ChaosField.keyFor(f, -5000, 5000), "0_" .. (f.cols - 1))
+	end)
+	it("drifts on a peaceful night with no creatures and no anomalies", function()
+		local f = ChaosField.new(FC)
+		local s = ChaosField.sectorAt(f, 0, 0)
+		local g = gaussFrom(11)
+		local lo, hi = math.huge, -math.huge
+		for _ = 1, 900 do
+			ChaosField.step(f, 1, quietEnv(), g)
+			lo, hi = math.min(lo, s.current), math.max(hi, s.current)
+		end
+		truthy(hi - lo > 1.5, "the field should wander a little")
+		truthy(hi < LEVELS[3].from, "a quiet night never reaches DISTURBANCE")
+	end)
+	it("calm rain alone stays at or below DRIFT", function()
+		for seed = 1, 6 do
+			local f = ChaosField.new(FC)
+			local g = gaussFrom(seed * 97)
+			for _ = 1, 1500 do
+				ChaosField.step(f, 1, quietEnv({ rain = 2.4 }), g)
+				for _, s in f.list do
+					truthy(s.current < LEVELS[3].from, "rain made sector " .. s.key .. " read " .. s.current)
+				end
+			end
+		end
+	end)
+	it("a storm alone stays below CONVERGENCE and only makes readings less certain", function()
+		local calm = ChaosField.new(FC)
+		local storm = ChaosField.new(FC)
+		run(calm, 1200, quietEnv({ rain = 1.5 }), 5)
+		run(storm, 1200, quietEnv({ rain = 4.8 }), 5)
+		for _, s in storm.list do
+			truthy(s.current < LEVELS[4].from, "storm sector " .. s.current)
+		end
+		local _, rc = levelAt(calm, "LOCAL", 3, 0)
+		local _, rs = levelAt(storm, "LOCAL", 3, 0)
+		truthy(rs.uncertainty > rc.uncertainty)
+		eq((levelAt(storm, "REGIONAL", 2, 0)), "UNKNOWN")
+	end)
+	it("a creature-heavy field can read STABLE: energy is not a monster count", function()
+		local f = ChaosField.new(FC)
+		local calm = {}
+		for i = 1, 6 do
+			table.insert(calm, { x = i * 10, z = 0, energy = 0, hunger = 0 })
+		end
+		run(f, 600, quietEnv({ night = 0, creatures = calm }), 3)
+		eq((levelAt(f, "LOCAL", 3, 0)), "STABLE")
+	end)
+	it("fed, hungry creatures raise the field slowly, never at once", function()
+		local f = ChaosField.new(FC)
+		local s = ChaosField.sectorAt(f, 0, 0)
+		local fed = { { x = s.x, z = s.z, energy = 1, hunger = 1 } }
+		local steady = FC.creatureEnergy + FC.creatureHunger
+		ChaosField.step(f, 1, quietEnv({ creatures = fed }), function()
+			return 0
+		end)
+		truthy(s.creature < steady * 0.1, "the creature term is lagged")
+		run(f, 300, quietEnv({ creatures = fed }), 4)
+		near(s.creature, steady, steady * 0.05)
+	end)
+	it("a zero-creature field still produces anomalies", function()
+		local f = ChaosField.new(FC)
+		local home = ChaosField.sectorAt(f, 0, 0)
+		local src = { { x = home.x, z = home.z, strength = 30, void = false } }
+		run(f, 120, quietEnv({ rain = 2, sources = src }), 8)
+		local level, r = levelAt(f, "LOCAL", 3, 0)
+		truthy(idx(level) >= idx("DISTURBANCE"), "local read " .. r.ceu)
+		truthy(r.irregularity > 0.4, "an anomaly makes the trace irregular")
+	end)
+	it("regional is approximate: a local anomaly barely moves it", function()
+		local f = ChaosField.new(FC)
+		local home = ChaosField.sectorAt(f, 0, 0)
+		run(
+			f,
+			120,
+			quietEnv({ rain = 2, sources = { { x = home.x, z = home.z, strength = 30, void = false } } }),
+			8
+		)
+		local _, rl = levelAt(f, "LOCAL", 3, 0)
+		local regional, rr = levelAt(f, "REGIONAL", 3, 0)
+		truthy(rr.ceu < rl.ceu - 15, "regional " .. rr.ceu .. " vs local " .. rl.ceu)
+		truthy(idx(regional) <= idx("DRIFT"), "regional reads " .. regional)
+		eq(rr.ceu % 5, 0)
+	end)
+	it("a void drops the reading to exactly zero and the level to UNKNOWN", function()
+		local f = ChaosField.new(FC)
+		local home = ChaosField.sectorAt(f, 0, 0)
+		run(f, 60, quietEnv({ rain = 2 }), 2)
+		run(
+			f,
+			12,
+			quietEnv({ rain = 2, sources = { { x = home.x, z = home.z, strength = 0, void = true } } }),
+			2
+		)
+		local level, r = levelAt(f, "LOCAL", 3, 1.5)
+		eq(r.ceu, 0)
+		eq(level, "UNKNOWN")
+	end)
+	it("higher sensitivity lowers measurement noise", function()
+		local f = ChaosField.new(FC)
+		local lo = ChaosField.read(f, 0, 0, MODES.LOCAL, SENS.min, SENS.min, SENS.max, 0)
+		local hi = ChaosField.read(f, 0, 0, MODES.LOCAL, SENS.max, SENS.min, SENS.max, 0)
+		truthy(hi.uncertainty < lo.uncertainty)
+	end)
+	it("levels have hysteresis and an UNKNOWN state", function()
+		eq(ChaosField.level(LEVELS, RULES, 37, 1, nil), "DISTURBANCE")
+		eq(ChaosField.level(LEVELS, RULES, 34, 1, "DISTURBANCE"), "DISTURBANCE")
+		eq(ChaosField.level(LEVELS, RULES, 31, 1, "DISTURBANCE"), "DRIFT")
+		eq(ChaosField.level(LEVELS, RULES, 85, 1, nil), "THRESHOLD")
+		eq(ChaosField.level(LEVELS, RULES, 40, RULES.unknownUncertainty, nil), "UNKNOWN")
+		eq(ChaosField.level(LEVELS, RULES, 0, 1, "STABLE"), "UNKNOWN")
+	end)
+end)
+
+local AC = DissonanceConfig.Anomaly
+local SC = DissonanceConfig.Scan
+
+local function runAnomaly(a: Dissonance.Anomaly, signature: number): { string }
+	local all = {}
+	for _ = 1, 600 do
+		for _, b in Dissonance.step(a, 1, signature, AC) do
+			table.insert(all, b)
+		end
+		if a.stage == "DONE" then
+			break
+		end
+	end
+	return all
+end
+
+local function position(list: { string }, value: string): number
+	for i, v in list do
+		if v == value then
+			return i
+		end
+	end
+	return 0
+end
+
+local function ctx(over: { [string]: any }?): Dissonance.Context
+	local c: { [string]: any } = {
+		family = "Arrival",
+		atHome = true,
+		scopeOn = true,
+		night = true,
+		dogNear = true,
+		mayaLit = true,
+		electric = true,
+		flickered = false,
+		peaked = true,
+		ghostDone = false,
+	}
+	for k, v in over or {} do
+		c[k] = v
+	end
+	return c :: any
+end
+
+describe("Dissonance", function()
+	it("an Arrival walks its stages in order, transmits, and ends", function()
+		local a = Dissonance.newAnomaly(1, "Arrival", 0, 0, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local beats = runAnomaly(a, 0)
+		eq(a.stage, "DONE")
+		local pa, pp, pf, pd =
+			position(beats, "active"),
+			position(beats, "peak"),
+			position(beats, "fade"),
+			position(beats, "done")
+		truthy(pa > 0 and pa < pp and pp < pf and pf < pd, table.concat(beats, ","))
+		truthy(position(beats, "transmit") > 0)
+		truthy(a.peaked)
+	end)
+	it("stage lengths differ from one anomaly to the next", function()
+		local a = Dissonance.newAnomaly(1, "Arrival", 0, 0, AC, { 0.1, 0.9, 0.3, 0.7 })
+		local b = Dissonance.newAnomaly(2, "Arrival", 0, 0, AC, { 0.8, 0.2, 0.6, 0.1 })
+		truthy(a.durations.ONSET ~= b.durations.ONSET and a.durations.ACTIVE ~= b.durations.ACTIVE)
+		truthy(a.durations.ONSET >= AC.stages.ONSET[1] and a.durations.ONSET <= AC.stages.ONSET[2])
+	end)
+	it("scanning hard feeds the anomaly and makes it coherent sooner", function()
+		local quiet = Dissonance.newAnomaly(1, "Arrival", 0, 0, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local loud = Dissonance.newAnomaly(2, "Arrival", 0, 0, AC, { 0.5, 0.5, 0.5, 0.5 })
+		for _ = 1, math.floor(quiet.durations.ONSET + 30) do
+			Dissonance.step(quiet, 1, 0, AC)
+			Dissonance.step(loud, 1, 0.35, AC)
+		end
+		truthy(loud.strength > quiet.strength)
+		truthy(loud.coherence > quiet.coherence)
+		truthy(loud.feed <= AC.feedMax)
+	end)
+	it("the Absence rises, drops to a void, then goes silent", function()
+		local a = Dissonance.newAnomaly(1, "Absence", 0, 0, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local rose, sawVoid = 0, false
+		local beats = {}
+		for _ = 1, 600 do
+			for _, b in Dissonance.step(a, 1, 0, AC) do
+				table.insert(beats, b)
+			end
+			rose = math.max(rose, a.envelope)
+			if a.stage == "PEAK" then
+				sawVoid = a.void and Dissonance.source(a).void and a.envelope == 0
+			end
+			if a.stage == "DONE" then
+				break
+			end
+		end
+		truthy(rose > 0.8)
+		truthy(sawVoid)
+		truthy(position(beats, "drop") > 0 and position(beats, "drop") < position(beats, "silence"))
+		eq(position(beats, "transmit"), 0)
+	end)
+	it("the Echo replays at envelope steps", function()
+		local a = Dissonance.newAnomaly(1, "Echo", 0, 0, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local n = 0
+		for _, b in runAnomaly(a, 0) do
+			if b == "echo" then
+				n += 1
+			end
+		end
+		eq(n, #AC.echoSteps)
+	end)
+	it("the Arrival's line gets clearer; the rare line is rare and gated", function()
+		local low = Dissonance.arrivalLine(0.1, 0.99, 42, false, AC)
+		truthy(low ~= Dissonance.ARRIVAL and string.find(low, "-", 1, true) ~= nil)
+		eq(#low, #Dissonance.ARRIVAL)
+		eq((Dissonance.arrivalLine(0.9, 0.99, 42, false, AC)), Dissonance.ARRIVAL)
+		local line, rare = Dissonance.arrivalLine(1, 0, 42, false, AC)
+		eq(line, Dissonance.ARRIVAL)
+		falsy(rare)
+		line, rare = Dissonance.arrivalLine(0.95, 0.1, 42, true, AC)
+		eq(line, Dissonance.NO_OUTSIDE)
+		truthy(rare)
+		eq((Dissonance.arrivalLine(0.95, 0.5, 42, true, AC)), Dissonance.ARRIVAL)
+		eq((Dissonance.arrivalLine(0.6, 0, 42, true, AC)) == Dissonance.NO_OUTSIDE, false)
+	end)
+	it("the Echo never keeps the original timing", function()
+		local times = { 0, 1, 2.5, 3.1 }
+		for seed = 1, 40 do
+			local plan = Dissonance.echoPlan(times, seed, 3)
+			eq(#plan, 3)
+			for k = 2, #plan do
+				local original = math.abs(times[plan[k].index] - times[plan[k - 1].index])
+				local replay = plan[k].delay - plan[k - 1].delay
+				local ratio = replay / math.max(original, 0.2)
+				truthy(ratio < 0.8 or ratio > 1.25, "seed " .. seed .. " kept a gap: " .. ratio)
+			end
+			for _, s in plan do
+				truthy(s.speed < 1 and s.index >= 2)
+			end
+		end
+		eq(#Dissonance.echoPlan({}, 1, 3), 0)
+	end)
+	it("the scan signature is zero when off or passive and grows with sensitivity", function()
+		eq(Dissonance.signature(false, MODES.LOCAL.signature, 5, SENS.min, SENS.max), 0)
+		eq(Dissonance.signature(true, MODES.PASSIVE.signature, 5, SENS.min, SENS.max), 0)
+		local s2 = Dissonance.signature(true, MODES.LOCAL.signature, 2, SENS.min, SENS.max)
+		local s5 = Dissonance.signature(true, MODES.LOCAL.signature, 5, SENS.min, SENS.max)
+		truthy(s2 < SC.threshold and s5 >= SC.threshold)
+		truthy(Dissonance.signature(true, MODES.REGIONAL.signature, 5, SENS.min, SENS.max) > s5)
+	end)
+	it("the emitter warms, blinks, pulses once, then cools down", function()
+		local e = Dissonance.newEmitter()
+		local sig = Dissonance.signature(true, MODES.LOCAL.signature, 5, SENS.min, SENS.max)
+		eq(Dissonance.emitterLamp(e, sig, SC), "warm")
+		local pulses, blinked, firstPulse = 0, false, 0
+		for t = 1, 120 do
+			if Dissonance.stepEmitter(e, 1, sig, SC) then
+				pulses += 1
+				firstPulse = if firstPulse == 0 then t else firstPulse
+				eq(Dissonance.emitterLamp(e, sig, SC), "pulse")
+			elseif pulses == 0 and Dissonance.emitterLamp(e, sig, SC) == "blink" then
+				blinked = true
+			end
+		end
+		truthy(blinked, "the lamp blinks before the pulse")
+		truthy(firstPulse > 10, "a pulse is never instant")
+		eq(pulses, 2) -- the second only after the full cooldown
+		local low = Dissonance.newEmitter()
+		for _ = 1, 600 do
+			falsy(Dissonance.stepEmitter(low, 1, SC.threshold * 0.9, SC))
+		end
+	end)
+	it("the director answers beats within its gates and cooldowns", function()
+		local cd = DissonanceConfig.Director.cooldowns
+		local last = {}
+		eq(Dissonance.choose("transmit", ctx(), last, 0, 0, cd, 0.5), "transmission")
+		eq(Dissonance.choose("transmit", ctx(), last, 1, 0, cd, 0.5), nil) -- cooling down
+		eq(Dissonance.choose("transmit", ctx({ scopeOn = false }), {}, 0, 0, cd, 0.5), nil)
+		eq(Dissonance.choose("peak", ctx(), {}, 0, 0, cd, 0.5), "flicker")
+		truthy(Dissonance.choose("peak", ctx({ flickered = true }), {}, 0, 0, cd, 0.5) ~= "flicker")
+		truthy(Dissonance.choose("peak", ctx({ electric = false }), {}, 0, 0, cd, 0.5) ~= "flicker")
+		eq(Dissonance.choose("level_DRIFT", ctx(), {}, 0, 0.99, cd, 0.5), nil) -- "none" can win
+		eq(Dissonance.choose("level_DISTURBANCE", ctx({ atHome = false }), {}, 0, 0, cd, 0.5), nil)
+		eq(Dissonance.choose("scopeOff", ctx({ scopeOn = false }), {}, 0, 0.1, cd, 0.5), "ghostNeedle")
+		eq(Dissonance.choose("scopeOff", ctx({ scopeOn = false, peaked = false }), {}, 0, 0.1, cd, 0.5), nil)
+		eq(
+			Dissonance.choose("scopeOff", ctx({ scopeOn = false, ghostDone = true }), {}, 0, 0.1, cd, 0.5),
+			nil
+		)
+		eq(Dissonance.choose("peak", ctx({ family = "Echo" }), {}, 0, 0, cd, 0.5), "echo")
+	end)
+	it("every director event is nonviolent and has a cooldown", function()
+		local safe = {
+			none = true,
+			transmission = true,
+			radio = true,
+			window = true,
+			flicker = true,
+			hush = true,
+			maya = true,
+			dogRouse = true,
+			dogWatch = true,
+			dogGrowl = true,
+			echo = true,
+			ghostNeedle = true,
+			relax = true,
+		}
+		local beats = { "level_DRIFT", "level_DISTURBANCE", "level_HIGH", "transmit", "peak", "echo" }
+		for _, b in { "drop", "silence", "fade", "done", "scopeOff" } do
+			table.insert(beats, b)
+		end
+		for _, family in Dissonance.Families do
+			for _, b in beats do
+				for _, rule in Dissonance.rulesFor(b, family, 0.5) or {} do
+					local event = rule.event
+					truthy(safe[event], event)
+					truthy(event == "none" or DissonanceConfig.Director.cooldowns[event] ~= nil, event)
+				end
+			end
+		end
+	end)
+	it("plays the 36.12 rainy-night numbers in pure logic", function()
+		local f = ChaosField.new(FC)
+		local g = gaussFrom(36)
+		local rainy = quietEnv({ rain = 2 })
+		for _ = 1, 120 do
+			ChaosField.step(f, 1, rainy, g)
+		end
+		local function reading(mode: string): number
+			return ChaosField.read(f, 3, 5, MODES[mode], 5, SENS.min, SENS.max, 0).ceu
+		end
+		local before = reading("LOCAL")
+		truthy(before >= 9 and before < LEVELS[2].from, "a cozy rainy night reads " .. before)
+		local home = ChaosField.sectorAt(f, 0, 0)
+		local a = Dissonance.newAnomaly(1, "Arrival", home.x, home.z, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local scanSig = Dissonance.signature(true, MODES.LOCAL.signature, 5, SENS.min, SENS.max)
+		local onsetEnd, activeEnd, regional, peak = 0, 0, 0, 0
+		local transmissions, whole = 0, false
+		for _ = 1, 400 do
+			-- The player turns sensitivity up 20 s into the disturbance.
+			local scanning = a.stage == "PEAK" or (a.stage == "ACTIVE" and a.stageAge > 20)
+			local stageBefore = a.stage
+			for _, b in Dissonance.step(a, 1, if scanning then scanSig else 0, AC) do
+				if b == "transmit" then
+					transmissions += 1
+					whole = whole or a.coherence >= AC.coherentAt
+				end
+			end
+			ChaosField.step(f, 1, quietEnv({ rain = 2, sources = { Dissonance.source(a) } }), g)
+			if stageBefore == "ONSET" and a.stage == "ACTIVE" then
+				onsetEnd = reading("LOCAL")
+			elseif stageBefore == "ACTIVE" and a.stage == "PEAK" then
+				activeEnd = reading("LOCAL")
+				regional = reading("REGIONAL")
+			end
+			peak = math.max(peak, reading("LOCAL"))
+			if a.stage == "DONE" then
+				break
+			end
+		end
+		truthy(
+			onsetEnd >= before + 3 and onsetEnd < LEVELS[3].from,
+			"onset climbs gently: " .. before .. " to " .. onsetEnd
+		)
+		truthy(activeEnd >= LEVELS[3].from, "local reads a disturbance: " .. activeEnd)
+		truthy(regional < LEVELS[3].from, "regional stays mostly normal: " .. regional)
+		truthy(peak < LEVELS[5].from, "scanning raises it, never to THRESHOLD: " .. peak)
+		truthy(transmissions >= 3 and whole, "the phrase repeats and comes through whole")
+		for _ = 1, 90 do
+			ChaosField.step(f, 1, rainy, g)
+		end
+		truthy(reading("LOCAL") < LEVELS[2].from, "afterwards the needle settles")
+	end)
+	it("PASSIVE through real noise: damped, rarely flapping, still shows the climb", function()
+		local f = ChaosField.new(FC)
+		local g = gaussFrom(5 * 7919)
+		local M = MODES.PASSIVE
+		local smooth: number? = nil
+		local level: string? = nil
+		local changes = 0
+		local function read(): number
+			local r = ChaosField.read(f, 3, 5, M, SENS.default, SENS.min, SENS.max, g())
+			local damped = ChaosField.blend(smooth, r.ceu, M.blend)
+			smooth = damped
+			local shown = ChaosField.quantize(damped, M.quantize)
+			local l = ChaosField.level(LEVELS, RULES, shown, r.uncertainty, level)
+			if level and l ~= level then
+				changes += 1
+			end
+			level = l
+			return shown
+		end
+		local env = quietEnv({ rain = 2 })
+		for _ = 1, 120 do
+			ChaosField.step(f, 1, env, g)
+		end
+		local before = 0
+		for t = 1, 300 do
+			ChaosField.step(f, 1, env, g)
+			if t % M.update == 0 then
+				before = read()
+			end
+		end
+		truthy(changes <= 4, "the SIGNAL lamp flapped " .. changes .. " times in five quiet minutes")
+		local home = ChaosField.sectorAt(f, 0, 0)
+		local a = Dissonance.newAnomaly(1, "Arrival", home.x, home.z, AC, { 0.5, 0.5, 0.5, 0.5 })
+		local last = before
+		for t = 1, 300 do
+			local stage = a.stage
+			Dissonance.step(a, 1, 0, AC)
+			ChaosField.step(f, 1, quietEnv({ rain = 2, sources = { Dissonance.source(a) } }), g)
+			if t % M.update == 0 then
+				last = read()
+			end
+			if stage == "ACTIVE" and a.stage == "PEAK" then
+				break
+			end
+		end
+		truthy(last >= before + 15, "PASSIVE shows the disturbance: " .. before .. " to " .. last)
+		eq(ChaosField.blend(30, 0, M.blend), 0) -- a dead field drops the needle at once
+	end)
+	it("config is ordered and the passive mode is silent", function()
+		for i = 2, #LEVELS do
+			truthy(LEVELS[i].from > LEVELS[i - 1].from)
+		end
+		eq(MODES.PASSIVE.signature, 0)
+		truthy(MODES.PASSIVE.range < MODES.LOCAL.range and MODES.LOCAL.range < MODES.REGIONAL.range)
+		for _, id in AudioConfig.Chaoscope do
+			truthy(id == "" or string.match(id, "^rbxassetid://%d+$") ~= nil, id)
 		end
 	end)
 end)

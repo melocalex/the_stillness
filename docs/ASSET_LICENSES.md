@@ -129,6 +129,27 @@ Inspiration note: the Watcher's unease motif is meant to evoke a slow,
 repetitive, high-pitched wrongness. It uses licensed APM catalog music; no
 existing game melody is copied.
 
+## Chaoscope audio (Chapter 36)
+
+The scope's clicks and static are the `switch` (9125609743) and
+`radioStatic` (9125774208) cues listed above. `AudioConfig.Chaoscope.hum`
+and `tone` are empty, so the hum and tone are silent. The candidates below
+come from the ProSoundEffects catalog and are **not verified** yet; they
+enter `AudioConfig` only after `tools/studio/verify_dissonance_audio.luau`
+loads them in Studio, and after someone has listened to them.
+
+| Candidate | Asset id | Title | Catalog |
+| --- | --- | --- | --- |
+| hum | 9112889082 | Transformer Hum 1 (SFX) | ProSoundEffects |
+| hum | 9112889525 | Transformer Hum 2 (SFX) | ProSoundEffects |
+| hum | 9125784811 | Power Throb Tonal Hum Slow Pulse Electrical (SFX) | ProSoundEffects |
+| tone | 9120972942 | Woo Woo Sci Fi Tone Constant Oscillating 1 (SFX) | ProSoundEffects |
+| click | 9118145455 | Relay Clicks 6 (SFX) | ProSoundEffects |
+
+The Arrival's words are shown as text on the radio card with radio static;
+there is no voice recording. The Echo replays the game's own cues, never
+recorded audio.
+
 ## Known Studio log message
 
 `ContentId: rbxassetid://203785492 failed due to: Asset type does not match

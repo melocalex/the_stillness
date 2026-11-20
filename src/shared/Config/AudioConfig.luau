@@ -103,6 +103,15 @@ AudioConfig.Cues = {
 	footstep = "rbxasset://sounds/action_footsteps_plastic.mp3",
 } :: { [string]: string }
 
+-- The H-17 Chaoscope on the cabin table (Chapter 36). Its clicks and static
+-- are the `switch` and `radioStatic` cues above. hum and tone stay empty
+-- (silent) until a partner-catalog id is verified in Studio with
+-- tools/studio/verify_dissonance_audio.luau.
+AudioConfig.Chaoscope = {
+	hum = "",
+	tone = "",
+} :: { [string]: string }
+
 -- Mixer tuning.
 AudioConfig.Mix = {
 	MusicVolume = 0.45,

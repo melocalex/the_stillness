@@ -26,6 +26,12 @@ local player = Players.LocalPlayer
 local layers: { [string]: Sound } = {}
 local rng = Random.new()
 local cueFolder: Folder
+-- Music, ambience and fire share one group so the Dissonance's silence
+-- (the Hush attribute) can pause them all together.
+local hushGroup: SoundGroup
+
+export type RecentCue = { name: string, at: number }
+local recent: { RecentCue } = {}
 
 local function makeSound(id: string, parent: Instance, looped: boolean, volume: number): Sound?
 	if id == "" then
@@ -44,6 +50,11 @@ function AudioController.cue(name: string, position: Vector3?, volume: number?)
 	local id = AudioConfig.Cues[name]
 	if not id or id == "" then
 		return
+	end
+	-- Remembered for the Echo (Chapter 36): names and times only.
+	table.insert(recent, { name = name, at = os.clock() })
+	if #recent > 16 then
+		table.remove(recent, 1)
 	end
 	local parent: Instance = SoundService
 	local holder: Attachment? = nil
@@ -67,6 +78,11 @@ function AudioController.cue(name: string, position: Vector3?, volume: number?)
 			s:Destroy()
 		end
 	end)
+end
+
+-- The last in-game cues this client played, oldest first.
+function AudioController.recentCues(): { RecentCue }
+	return table.clone(recent)
 end
 
 local function cameraInside(): (boolean, string?)
@@ -134,6 +150,7 @@ local function playMusic(state: string)
 	if not s then
 		return
 	end
+	s.SoundGroup = hushGroup
 	s:Play()
 	TweenService:Create(s, TweenInfo.new(AudioConfig.Mix.MusicFade), { Volume = AudioConfig.Mix.MusicVolume })
 		:Play()
@@ -209,10 +226,15 @@ function AudioController.start()
 	cueFolder = Instance.new("Folder")
 	cueFolder.Name = "StillnessAudio"
 	cueFolder.Parent = SoundService
+	hushGroup = Instance.new("SoundGroup")
+	hushGroup.Name = "Hushable"
+	hushGroup.Volume = 1 -- a new SoundGroup starts at 0.5
+	hushGroup.Parent = SoundService
 	for name, id in AudioConfig.Ambience :: { [string]: string } do
 		local s = if name == "fireplace" then nil else makeSound(id, cueFolder, true, 0)
 		if s then
 			s.Name = name
+			s.SoundGroup = hushGroup
 			s:Play()
 			layers[name] = s
 		end
@@ -225,6 +247,7 @@ function AudioController.start()
 		end
 		local sound = s
 		sound.RollOffMaxDistance = 40
+		sound.SoundGroup = hushGroup
 		sound:Play()
 		local function update()
 			sound.Volume = if f:GetAttribute("Lit") == true then 0.7 * AudioConfig.Mix.AmbienceVolume else 0
@@ -263,6 +286,10 @@ function AudioController.start()
 			local target = (targets[name] or 0) * AudioConfig.Mix.AmbienceVolume
 			s.Volume += (target - s.Volume) * k
 		end
+		-- The Dissonance's silence: rain, fire, insects and music all pause,
+		-- then come back.
+		local hush = math.clamp((ReplicatedStorage:GetAttribute("Hush") :: number?) or 0, 0, 1)
+		hushGroup.Volume += ((1 - 0.92 * hush) - hushGroup.Volume) * math.min(dt / 1.2, 1)
 	end)
 	task.spawn(function()
 		while true do

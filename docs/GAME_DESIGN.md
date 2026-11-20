@@ -178,10 +178,88 @@ records, the first Bad Night. Maya's emergencies wait for the rescue system
 plays out at the hill house. Objectives are data-driven, stored on the
 server, and never soft-lock a slow player.
 
+## The Dissonance (Chapter 36)
+
+Tension inside a safe house, without showing a monster. A field of
+supernatural instability lies over Pinehaven, and one instrument on the
+cabin table can read it.
+
+**The H-17 Chaoscope.** A boxy field instrument next to the radio: an analog
+CEU dial, a small oscilloscope trace, four lamps (POWER, SIGNAL, EMIT, FAULT),
+a sensitivity knob and a power switch, and a low hum (silent until a hum
+sound is verified). Press R at the switch to turn it on or off, or F to look
+closely: the camera frames the instrument and three plain controls appear
+(POWER, mode, sensitivity). There is no HUD meter. You learn the instrument
+by looking at it. The needle is damped like a real meter, so it drifts
+rather than jumps.
+
+**The field is not a monster count.** Each map sector has a background
+(a baseline, a little more at night, a slow drift), a weather term (rain
+adds a little; storms add interference, not energy), a lagged creature term
+(their fear energy and hunger, and the collective's alert level; calm
+creatures add nothing) and anomaly sources. Peaceful nights drift between
+STABLE and DRIFT. Calm rain alone never goes past DRIFT; a storm alone stays
+below CONVERGENCE but makes readings uncertain, often UNKNOWN. A field full
+of calm creatures can read STABLE, and anomalies happen with no creatures at
+all. A reading never reliably predicts an encounter.
+
+**Modes.**
+
+| Mode | Range | Precision | Updates | Scan signature |
+| --- | --- | --- | --- | --- |
+| PASSIVE | the house | coarse | every 3 s | none |
+| LOCAL | around the house | best | every 1 s | up to 0.35 |
+| REGIONAL | all of Pinehaven, averaged | rounded to 5 CEU | every 4 s | up to 0.7 |
+
+Higher sensitivity lowers the noise but raises the scan signature.
+
+**Warning levels.** STABLE (under 18 CEU), DRIFT (18), DISTURBANCE (36),
+CONVERGENCE (58), THRESHOLD (80), and UNKNOWN when the reading is dead zero
+or too noisy to trust. A level only drops once the needle is 4 CEU below its
+border, so a needle on a border does not flap.
+
+**Signal families.** Each anomaly runs onset, active, peak and fade, with
+stage lengths drawn per anomaly, so no two play out the same way.
+
+- *The Arrival*: an intermittent transmission on the scope's speaker that
+  slowly becomes coherent. The radio card shows "Unknown: The quiet is
+  ending." with letters missing at first, then whole. A second, rarer line
+  needs a nearly whole signal and comes at most once every five days.
+- *The Echo*: the scope replays a few sounds the house made recently (a
+  door, a latch, the light switch), out of order and too slow. Only in-game
+  sounds, never recordings and never a microphone; never creature sounds or
+  breaking glass.
+- *The Absence*: energy climbs, then drops to zero, and the house goes
+  unusually quiet: rain, fire and music fade out for a few seconds and come
+  back.
+
+**Active-scan risk.** LOCAL or REGIONAL at high sensitivity emits a
+signature. The EMIT lamp warms, blinks while it charges, flashes on the
+pulse, then dims through a cooldown; the hum climbs in pitch with
+sensitivity. Scanning hard also feeds the anomaly, so the needle rises and
+the Arrival grows clearer. Each pulse is published for creature code as
+workspace attributes `ChaosSignal` (strength), `ChaosSignalPosition` and
+`ChaosSignalAt`. No creature reads them yet.
+
+**What the house does.** The event director answers anomaly beats (stage
+changes, coherence steps, level crossings), never a timer, and any beat may
+also answer with nothing. The answers: radio static from the cabin radio, a
+window rattling, one flicker of the house circuit (only if an electric light
+is on), the ambience pause, Maya's window going dark for a few seconds
+(never when she has chosen to stay dark), and a startle for Caramelo that
+his own mood system turns into raising his head or a low growl, kept well
+below barking. If the scope is switched
+off after an Arrival peaked, there is a chance of a click and the needle
+moving on its own, then settling. Nothing in the Dissonance damages,
+breaches, calls creatures or blocks the story, and it stays silent on day 1.
+
+**Journal.** Readings of DISTURBANCE or higher and each family's first
+sighting of the day become observed entries.
+
 ## Design chapters
 
-The full brief is split into chapters 1-33 (vision, environment, world,
+The full brief is split into chapters (vision, environment, world,
 day/night, shelter, creature AI, creature types, coat, dog, building,
 comfort, weather, story, music 26, ecology and windows 27, bad nights 28,
-storms 29, town 31, Maya 32, prologue 33). `STATUS.md` tracks which parts
-are implemented.
+storms 29, town 31, Maya 32, prologue 33, fear ecology 35, the Dissonance
+36). `STATUS.md` tracks which parts are implemented.

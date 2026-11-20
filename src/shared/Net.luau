@@ -19,6 +19,7 @@ Net.ClientEvents = {
 	"Build", -- (buildableId: string, cframe: CFrame)
 	"EatStew",
 	"StorageMove", -- (item: string, amount: number, toChest: boolean)
+	"Chaoscope", -- (action: "power" | "mode" | "sensitivity", value: any)
 }
 Net.ClientUnreliable = {
 	"LookVector", -- (Vector3) camera direction for "is the creature being watched"
@@ -35,6 +36,7 @@ Net.ServerEvents = {
 	"Note", -- (title: string, body: string)
 	"EndCard", -- (text: string)
 	"Radio", -- (text: string)
+	"Dissonance", -- (kind: string, position: Vector3?, seed: number?) nonvisual effects
 }
 Net.Functions = {
 	"GetJournal",

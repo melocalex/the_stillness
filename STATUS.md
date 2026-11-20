@@ -59,14 +59,24 @@ Seen in Studio on 2026-11-20 (builds head5 and head6):
 
 ## Automated tests
 
-- 81 Lune unit tests over the pure logic: TimeCycle, Perception,
+- 109 Lune unit tests over the pure logic: TimeCycle, Perception,
   CreatureBrain, Shelter, Noise, CollectiveMind, Inventory, NightClass
   (including the 65/25/9/1 night weights and the scripted first nights),
   Comfort, LightVisibility, MusicState (including storm night), Journal,
   StoryProgress, Mystery, Breath, AudioConfig, FearEcology (fear bounds,
   diminishing returns, starving, temperament limits), DogMind (senses,
-  hysteresis, bark odds, step-by-step calming, familiarity) and RadioConfig
-  (every condition and story fact exists).
+  hysteresis, bark odds, step-by-step calming, familiarity), RadioConfig
+  (every condition and story fact exists), ChaosField and Dissonance.
+- Chapter 36 rules pinned by tests: peaceful nights drift; calm rain alone
+  stays at or below DRIFT; a storm alone stays below CONVERGENCE and only
+  adds uncertainty; a field of calm creatures reads STABLE; anomalies
+  happen with no creatures; REGIONAL barely moves for a local anomaly; an
+  Absence reads exactly zero (UNKNOWN); the Echo never keeps the original
+  timing; PASSIVE with real noise samples is damped, rarely flaps and still
+  shows the climb; the scan emitter warns before it pulses and cools down; every
+  director event is nonviolent and has a cooldown; and a pure-logic replay
+  of the 36.12 rainy night (onset climb, local disturbance, regional calm,
+  the phrase repeating and coming through whole, the needle settling).
 - Every server service, client controller and world builder is type-checked
   in strict mode and built by Rojo, but **no service has a behavioural
   test**. That includes MayaService, OpeningService, ToolService, the HUD
@@ -134,6 +144,31 @@ Revision 2.0 (commits d248a33 and faf03a6, 2026-11-20):
 - Visible petting: dog stops, faces the player and sits; the player bends
   and strokes it (IKControl).
 
+Chapter 36, the Dissonance (branch `feat/dissonance`, 2026-11-20). Passes
+the gate; **not run in Studio**:
+
+- H-17 Chaoscope on the cabin table: dial, trace and lamps drawn on the
+  client from scope attributes, R to switch on/off, F to look closely
+  (POWER, mode, sensitivity). On by default in PASSIVE. The needle is
+  damped per mode so it drifts rather than jumps.
+- ChaoticEnergyService: 11x11 sector field ticking at 1 Hz on real time;
+  rain, night, collective level and creature `FearEnergy` / `Hunger`
+  attributes as inputs (missing reads 0); one anomaly at a time, none on
+  day 1; Studio seeding through `DissonanceForce`.
+- DissonanceEventDirector: transmissions on the radio card ("Unknown: ..."),
+  radio static, window rattle, one flicker, the hush, Maya's window (skipped
+  when MayaService keeps her dark), a startle for Caramelo through his mood
+  system (`StartleStrength` / `StartledAt`), the Echo, the needle moving
+  while off; journal entries through `ObservationService.note`. Not done:
+  Caramelo facing the doorway (the startle hook carries no direction).
+  Muted on day 1 and while `TimeScale` is above 1.
+- Scan signature with charge, warning, pulse and cooldown; published as
+  workspace `ChaosSignal`, `ChaosSignalPosition`, `ChaosSignalAt` for the
+  creature code to read later (nothing reads it yet).
+- Audio: the scope's clicks and static reuse verified cues (light switch,
+  radio static). The hum and the faint tone are silent until an id is
+  verified.
+
 Older systems:
 
 - Gathering, inventory, crafting, building placement.
@@ -174,6 +209,12 @@ Older systems:
 - **Dog animations in a published game**: the account owner must publish
   the Dog KeyframeSequences as Animation assets.
 - **Publishing**: File > Publish to Roblox As, from the owner's account.
+- **Chapter 36 in Studio**: the session that built it was not given access
+  to Studio, so the slice has not been played and the hum and tone
+  candidates (ProSoundEffects 9112889082, 9112889525, 9125784811,
+  9120972942; relay click 9118145455) are unverified. Run
+  `tools/studio/verify_dissonance_audio.luau` and the checklist in
+  `docs/TESTING.md`.
 
 ## Known issues
 
