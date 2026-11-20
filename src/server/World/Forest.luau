@@ -6,6 +6,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
+local Assets = require(script.Parent.Assets)
 local Builder = require(script.Parent.Builder)
 local Terrain = require(script.Parent.Terrain)
 
@@ -14,10 +15,71 @@ local Forest = {}
 local W = WorldConfig
 local BARK = Color3.fromRGB(70, 52, 40)
 
+-- Scale range per asset kind so trees tower over the player (5 studs).
+local KIND_SCALE: { [string]: { number } } = {
+	Ponderosa = { 1.25, 1.7 },
+	Cedar = { 1.0, 1.35 },
+	Birch = { 0.9, 1.25 },
+	Oak = { 0.85, 1.1 },
+	SnowPine = { 0.55, 0.9 },
+}
+
+local function biomeKind(x: number, z: number, h: number, rng: Random): string
+	local lakeD = math.sqrt((x - W.Lake.x) ^ 2 + (z - W.Lake.z) ^ 2)
+	if h > 55 then
+		return "SnowPine"
+	end
+	if lakeD < W.Lake.radius + 70 and rng:NextNumber() < 0.22 then
+		return "Oak"
+	end
+	local r = rng:NextNumber()
+	if r < 0.5 then
+		return "Ponderosa"
+	elseif r < 0.72 then
+		return "Cedar"
+	end
+	return "Birch"
+end
+
+-- A real tree from the asset pack, with a simple invisible trunk collider as
+-- PrimaryPart (cheap collisions, a stable anchor for prompts). Falls back to
+-- the procedural pine when assets are missing.
+function Forest.tree(parent: Instance, x: number, z: number, rng: Random, kind: string?): Model
+	local h = Terrain.heightAt(x, z)
+	local k = kind or biomeKind(x, z, h, rng)
+	local range = KIND_SCALE[k] or { 1, 1 }
+	local m = Assets.tree(k, rng, rng:NextNumber(range[1], range[2]))
+	if not m then
+		return Forest.pine(parent, x, z, rng, false)
+	end
+	m.Name = k
+	Assets.place(m, x, h, z, rng:NextNumber(0, math.pi * 2))
+	local collider = Builder.part({
+		name = "Collider",
+		shape = Enum.PartType.Cylinder,
+		size = Vector3.new(14, 2.2, 2.2),
+		cframe = CFrame.new(x, h + 6, z) * CFrame.Angles(0, 0, math.rad(90)),
+		transparency = 1,
+		canQuery = true,
+		castShadow = false,
+		parent = m,
+	})
+	m.PrimaryPart = collider
+	m:SetAttribute("TreeKind", k)
+	m.Parent = parent
+	return m
+end
+
 local function clearOk(x: number, z: number, extra: number): boolean
 	for _, c in W.Forest.KeepClear do
 		local dx, dz = x - c.x, z - c.z
 		if dx * dx + dz * dz < (c.r + extra) ^ 2 then
+			return false
+		end
+	end
+	for _, h in W.Houses do
+		local dx, dz = x - h.x, z - h.z
+		if dx * dx + dz * dz < (20 + extra) ^ 2 then
 			return false
 		end
 	end
@@ -205,9 +267,10 @@ function Forest.build(parent: Instance, seed: number)
 
 	for _ = 1, cfg.Trees do
 		local x, z = randomSpot(rng, 0)
-		if x < 9000 then
+		-- Groves and glades: accept by local forest density.
+		if x < 9000 and rng:NextNumber() < Terrain.forestDensity(x, z) then
 			local threat = (x - W.ThreatArea.x) ^ 2 + (z - W.ThreatArea.z) ^ 2 < W.ThreatArea.radius ^ 2
-			local t = Forest.pine(trees, x, z, rng, threat)
+			local t = if threat then Forest.pine(trees, x, z, rng, true) else Forest.tree(trees, x, z, rng)
 			-- Gatherable trees are denser near the cabin.
 			local near = math.sqrt(x * x + z * z) < 140
 			local chance = cfg.ResourceTreeFraction * (if near then 2 else 0.5)
@@ -230,8 +293,18 @@ function Forest.build(parent: Instance, seed: number)
 		local a = i / 8 * math.pi * 2 + 0.3
 		local x, z = math.cos(a) * 44, math.sin(a) * 44 + 4
 		if clearOk(x, z, -20) then
-			local t = Forest.pine(trees, x, z, rng, false)
+			local t = Forest.tree(trees, x, z, rng, if i % 3 == 0 then "Birch" else "Ponderosa")
 			makeResource(t, "Tree", 3)
+		end
+	end
+	-- Snow pines on the mountain slopes around the valley (scenery).
+	for _ = 1, 90 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(W.MountainStart + 10, W.HalfSize - 20)
+		local x, z = math.cos(a) * r, math.sin(a) * r
+		local edge = math.max(math.abs(x), math.abs(z))
+		if edge < W.HalfSize - 10 and Terrain.heightAt(x, z) < 140 then
+			Forest.tree(trees, x, z, rng, "SnowPine")
 		end
 	end
 

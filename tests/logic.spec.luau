@@ -19,6 +19,8 @@ local MusicState = require("../src/shared/Logic/MusicState")
 local Journal = require("../src/shared/Logic/Journal")
 local StoryProgress = require("../src/shared/Logic/StoryProgress")
 local Mystery = require("../src/shared/Logic/Mystery")
+local Breath = require("../src/shared/Logic/Breath")
+local AudioConfig = require("../src/shared/Config/AudioConfig")
 local GameConfig = require("../src/shared/Config/GameConfig")
 local CreatureConfig = require("../src/shared/Config/CreatureConfig")
 local StoryConfig = require("../src/shared/Config/StoryConfig")
@@ -655,6 +657,70 @@ describe("Mystery", function()
 		end
 		local bad = Mystery.eventsFor(script, 3, "Bad")
 		eq(bad, script.badNight)
+	end)
+end)
+
+describe("Breath", function()
+	local cfg = Breath.Default
+	it("holding drains, running out gasps and forces a cooldown", function()
+		local s = Breath.new()
+		local ev
+		for _ = 1, math.ceil(cfg.capacitySeconds / 0.5) do
+			ev = Breath.step(s, true, 0.5, cfg)
+			if ev then
+				break
+			end
+		end
+		eq(ev, "gasp")
+		eq(s.breath, 0)
+		falsy(s.holding)
+		Breath.step(s, true, 0.5, cfg)
+		falsy(s.holding, "cannot hold again during the cooldown")
+	end)
+	it("an early release is silent, a late one is a soft exhale", function()
+		local s = Breath.new()
+		Breath.step(s, true, 1, cfg)
+		eq(Breath.step(s, false, 0.1, cfg), "release")
+		local late = Breath.new()
+		for _ = 1, 7 do
+			Breath.step(late, true, 1, cfg)
+		end
+		truthy(Breath.straining(late, cfg) or late.breath < cfg.exhaleBelow)
+		eq(Breath.step(late, false, 0.1, cfg), "exhale")
+	end)
+	it("breath recovers when not holding", function()
+		local s = Breath.new()
+		s.breath = 0.2
+		Breath.step(s, false, 2, cfg)
+		truthy(s.breath > 0.2)
+		for _ = 1, 20 do
+			Breath.step(s, false, 1, cfg)
+		end
+		eq(s.breath, 1)
+	end)
+end)
+
+describe("AudioConfig", function()
+	it("only uses ids that are empty or built-in content", function()
+		local function check(id: string)
+			truthy(
+				id == ""
+					or string.sub(id, 1, 11) == "rbxasset://"
+					or string.match(id, "^rbxassetid://%d+$") ~= nil,
+				"bad id " .. id
+			)
+		end
+		for _, list in AudioConfig.Music do
+			for _, id in list do
+				check(id)
+			end
+		end
+		for _, id in AudioConfig.Ambience do
+			check(id)
+		end
+		for _, id in AudioConfig.Cues do
+			check(id)
+		end
 	end)
 end)
 

@@ -1,39 +1,60 @@
 --!strict
--- Server entry point: build the world, start services, spawn players when
--- they press Play.
+-- Server entry point: create remotes, build the world, start services in
+-- dependency order. Players spawn when they press Play (RequestSpawn).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 Players.CharacterAutoLoads = false
 
+local Net = require(ReplicatedStorage.Shared.Net)
+Net.setup()
+
 local World = require(script.Parent.World)
-local TimeService = require(script.Parent.Services.TimeService)
+local Services = script.Parent.Services
+local TimeService = require(Services.TimeService)
+local ShelterService = require(Services.ShelterService)
+local LightService = require(Services.LightService)
+local WeatherService = require(Services.WeatherService)
+local PlayerService = require(Services.PlayerService)
+local StoryService = require(Services.StoryService)
+local InteractionService = require(Services.InteractionService)
+local GatherService = require(Services.GatherService)
+local CollectiveService = require(Services.CollectiveService)
+local CreatureService = require(Services.CreatureService)
+local NightDirector = require(Services.NightDirector)
+local DogService = require(Services.DogService)
+local HouseActivityService = require(Services.HouseActivityService)
+local OldOneService = require(Services.OldOneService)
+local ObservationService = require(Services.ObservationService)
+local BuildService = require(Services.BuildService)
 
 local built = World.build()
-TimeService.start()
-
-workspace:SetAttribute("WorldReady", true)
 ReplicatedStorage:SetAttribute("SpawnPoint", built.spawn)
 
-local function spawnPlayer(player: Player)
-	player:LoadCharacterAsync()
-	local character = player.Character
-	if character then
-		character:PivotTo(CFrame.new(built.spawn) * CFrame.Angles(0, math.rad(200), 0))
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.Died:Connect(function()
-				task.wait(3)
-				if player.Parent then
-					spawnPlayer(player)
-				end
-			end)
-		end
+local function start(name: string, fn: () -> ())
+	local ok, err = pcall(fn :: any)
+	if not ok then
+		warn(string.format("[Main] %s failed to start: %s", name, tostring(err)))
 	end
 end
 
-Players.PlayerAdded:Connect(spawnPlayer)
-for _, p in Players:GetPlayers() do
-	task.spawn(spawnPlayer, p)
-end
+start("Time", TimeService.start)
+start("Shelter", ShelterService.start)
+start("Light", LightService.start)
+start("Weather", WeatherService.start)
+start("Player", PlayerService.start)
+start("Story", StoryService.start)
+start("Interaction", InteractionService.start)
+start("Gather", GatherService.start)
+start("Collective", CollectiveService.start)
+start("Creature", CreatureService.start)
+start("Night", NightDirector.start)
+start("Dog", DogService.start)
+start("House", HouseActivityService.start)
+start("OldOne", OldOneService.start)
+start("Observation", ObservationService.start)
+start("Build", BuildService.start)
+
+workspace:SetAttribute("WorldReady", true)
+print("[Main] THE STILLNESS server ready")

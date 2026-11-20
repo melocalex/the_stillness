@@ -3,27 +3,31 @@
 -- revolve around. Built from registered modules (door, windows, roof) so the
 -- shelter system can reason about each entry point explicitly.
 --
--- Layout (local space, floor at y = 0, interior x -14..14, z -11..11):
---   south wall (+z): front door, small window
---   north wall (-z): large window looking across the lake
---   east wall  (+x): cracked window with a broken latch
---   west wall  (-x): fireplace and chimney
+-- Layout (local space, floor at y = 0, interior x -18..18, z -13..13):
+--   living room: west and centre, fireplace on the west wall, big north
+--                window looking across the lake, rocking chair facing it
+--   bedroom:     north-east (x 8..18, z -13..2), cracked east window with a
+--                broken latch (the window storms can force open)
+--   nook:        south-east, storage chest, counter, fuse box
+--   porch:       covered, south side, front door
 
 local CollectionService = game:GetService("CollectionService")
 
+local Assets = require(script.Parent.Assets)
 local Builder = require(script.Parent.Builder)
 
 local Cabin = {}
 
-local H = 11
-local WOOD = Color3.fromRGB(104, 74, 50)
-local WOOD_DARK = Color3.fromRGB(74, 52, 36)
-local WOOD_LIGHT = Color3.fromRGB(140, 104, 72)
-local STONE = Color3.fromRGB(110, 106, 100)
+local HX, HZ, H = 18, 13, 12
+local WOOD = Color3.fromRGB(112, 80, 54)
+local WOOD_DARK = Color3.fromRGB(70, 49, 34)
+local WOOD_LIGHT = Color3.fromRGB(146, 108, 74)
+local STONE = Color3.fromRGB(112, 108, 102)
 local FABRIC = Color3.fromRGB(122, 52, 44)
-local CURTAIN = Color3.fromRGB(96, 48, 40)
+local CURTAIN = Color3.fromRGB(98, 50, 42)
 local GLASS = Color3.fromRGB(160, 190, 200)
 local WARM = Color3.fromRGB(255, 176, 110)
+local ROOF = Color3.fromRGB(74, 50, 44)
 
 export type Built = {
 	model: Model,
@@ -38,7 +42,8 @@ local function wall(
 	fixed: number,
 	from: number,
 	to: number,
-	openings: { { number } }
+	openings: { { number } },
+	color: Color3?
 )
 	-- openings: { center, width, bottom, top }, along the wall axis
 	table.sort(openings, function(a, b)
@@ -62,7 +67,7 @@ local function wall(
 			name = "Wall",
 			size = size,
 			cframe = origin * CFrame.new(pos),
-			color = WOOD,
+			color = color or WOOD,
 			material = Enum.Material.WoodPlanks,
 			parent = parent,
 		})
@@ -76,6 +81,35 @@ local function wall(
 		cursor = c + w / 2
 	end
 	seg(cursor, to, 0, H)
+end
+
+-- Horizontal log-style trim on an exterior wall face.
+local function trim(
+	parent: Instance,
+	origin: CFrame,
+	axis: "x" | "z",
+	fixed: number,
+	from: number,
+	to: number
+)
+	for y = 1.2, H - 0.5, 1.8 do
+		local len = to - from
+		local size = if axis == "x" then Vector3.new(len, 0.35, 0.3) else Vector3.new(0.3, 0.35, len)
+		local pos = if axis == "x"
+			then Vector3.new((from + to) / 2, y, fixed)
+			else Vector3.new(fixed, y, (from + to) / 2)
+		Builder.part({
+			name = "Trim",
+			size = size,
+			cframe = origin * CFrame.new(pos),
+			color = WOOD_DARK,
+			material = Enum.Material.Wood,
+			canCollide = false,
+			canQuery = false,
+			castShadow = false,
+			parent = parent,
+		})
+	end
 end
 
 local function setEntry(
@@ -121,42 +155,80 @@ local function buildWindow(
 		castShadow = false,
 		parent = m,
 	})
-	-- Frame
 	for _, s in { -1, 1 } do
 		Builder.part({
 			name = "FrameSide",
-			size = Vector3.new(0.35, height + 0.7, 1.2),
-			cframe = facing * CFrame.new(s * (width / 2 + 0.17), 0, 0),
+			size = Vector3.new(0.4, height + 0.8, 1.3),
+			cframe = facing * CFrame.new(s * (width / 2 + 0.2), 0, 0),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
 			parent = m,
 		})
 		Builder.part({
 			name = "FrameRail",
-			size = Vector3.new(width + 0.7, 0.35, 1.2),
-			cframe = facing * CFrame.new(0, s * (height / 2 + 0.17), 0),
+			size = Vector3.new(width + 0.8, 0.4, 1.3),
+			cframe = facing * CFrame.new(0, s * (height / 2 + 0.2), 0),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
 			parent = m,
 		})
 	end
+	-- Sill and a flower box outside.
 	Builder.part({
-		name = "Mullion",
-		size = Vector3.new(0.2, height, 0.3),
-		cframe = facing,
+		name = "Sill",
+		size = Vector3.new(width + 1.2, 0.3, 1.8),
+		cframe = facing * CFrame.new(0, -height / 2 - 0.45, 0.2),
+		color = WOOD_LIGHT,
+		material = Enum.Material.Wood,
+		canQuery = false,
+		parent = m,
+	})
+	Builder.part({
+		name = "FlowerBox",
+		size = Vector3.new(width * 0.8, 0.8, 1),
+		cframe = facing * CFrame.new(0, -height / 2 - 1.1, -1.1),
 		color = WOOD_DARK,
 		material = Enum.Material.Wood,
 		canQuery = false,
-		castShadow = false,
 		parent = m,
 	})
+	for i = 1, math.floor(width) do
+		Builder.part({
+			name = "Flower",
+			shape = Enum.PartType.Ball,
+			size = Vector3.new(0.6, 0.6, 0.6),
+			cframe = facing * CFrame.new(
+				-width * 0.4 + (i - 0.5) * (width * 0.8 / math.floor(width)),
+				-height / 2 - 0.6,
+				-1.1
+			),
+			color = if i % 2 == 0 then Color3.fromRGB(200, 120, 60) else Color3.fromRGB(160, 60, 70),
+			material = Enum.Material.SmoothPlastic,
+			canCollide = false,
+			canQuery = false,
+			castShadow = false,
+			parent = m,
+		})
+	end
+	for k = 1, 2 do
+		Builder.part({
+			name = "Mullion",
+			size = if k == 1 then Vector3.new(0.2, height, 0.3) else Vector3.new(width, 0.2, 0.3),
+			cframe = facing,
+			color = WOOD_DARK,
+			material = Enum.Material.Wood,
+			canQuery = false,
+			castShadow = false,
+			parent = m,
+		})
+	end
 	-- Curtains hang inside (+Z of facing is inside). Closed = full cover.
 	local curtainHalf = width / 2 + 0.3
 	for i, s in { -1, 1 } do
 		local c = Builder.part({
 			name = "Curtain" .. i,
-			size = Vector3.new(0.9, height + 0.6, 0.15),
-			cframe = facing * CFrame.new(s * (width / 2 + 0.35), 0, 0.9),
+			size = Vector3.new(0.9, height + 0.8, 0.15),
+			cframe = facing * CFrame.new(s * (width / 2 + 0.35), 0, 0.95),
 			color = CURTAIN,
 			material = Enum.Material.Fabric,
 			canCollide = false,
@@ -168,11 +240,21 @@ local function buildWindow(
 		c:SetAttribute("ClosedWidth", curtainHalf + 0.2)
 		c:SetAttribute("OpenWidth", 0.9)
 	end
+	Builder.part({
+		name = "CurtainRod",
+		size = Vector3.new(width + 2.4, 0.15, 0.15),
+		cframe = facing * CFrame.new(0, height / 2 + 0.5, 0.95),
+		color = Color3.fromRGB(40, 36, 32),
+		material = Enum.Material.Metal,
+		canCollide = false,
+		canQuery = false,
+		parent = m,
+	})
 	-- Exterior shutters, hidden until built.
 	local shutter = Builder.part({
 		name = "Shutter",
 		size = Vector3.new(width + 0.6, height + 0.6, 0.4),
-		cframe = facing * CFrame.new(0, 0, -0.9),
+		cframe = facing * CFrame.new(0, 0, -0.95),
 		color = WOOD_DARK,
 		material = Enum.Material.WoodPlanks,
 		transparency = 1,
@@ -181,7 +263,6 @@ local function buildWindow(
 		parent = m,
 	})
 	shutter:SetAttribute("Built", false)
-	-- A plank nailed across a damaged window.
 	if health < 100 then
 		Builder.part({
 			name = "Board",
@@ -252,7 +333,7 @@ end
 
 local function buildDoor(parent: Instance, origin: CFrame): Model
 	local m = Builder.model("Door", parent)
-	local hinge = origin * CFrame.new(1.5, 0, 11.5) -- left edge of the opening
+	local hinge = origin * CFrame.new(1.5, 0, HZ + 0.5) -- left edge of the opening
 	local panel = Builder.part({
 		name = "Panel",
 		size = Vector3.new(5, 8, 0.45),
@@ -280,11 +361,11 @@ local function buildDoor(parent: Instance, origin: CFrame): Model
 		weld.Part1 = band
 		weld.Parent = band
 	end
-	-- The broken door lies in the grass at the start.
+	-- The broken door lies in the grass beside the porch at the start.
 	local broken = Builder.part({
 		name = "BrokenDoor",
 		size = Vector3.new(5, 0.45, 7.6),
-		cframe = origin * CFrame.new(6.5, -1.3, 16) * CFrame.Angles(0, math.rad(18), math.rad(4)),
+		cframe = origin * CFrame.new(14, -1.6, 19) * CFrame.Angles(0, math.rad(18), math.rad(4)),
 		color = WOOD_LIGHT,
 		material = Enum.Material.WoodPlanks,
 		parent = m,
@@ -301,7 +382,6 @@ local function buildDoor(parent: Instance, origin: CFrame): Model
 	upgrade.KeyboardKeyCode = Enum.KeyCode.R
 	upgrade.UIOffset = Vector2.new(0, 70)
 	upgrade.Enabled = false
-	-- Missing door: panel is not there yet.
 	panel.Transparency = 1
 	panel.CanCollide = false
 	return m
@@ -341,111 +421,260 @@ local function light(
 	return bulb
 end
 
+-- Places a vetted asset at a local position on the cabin floor. Returns nil
+-- (and the caller builds a procedural stand-in) when the asset is missing.
+local function asset(
+	name: string,
+	parent: Instance,
+	origin: CFrame,
+	x: number,
+	z: number,
+	yaw: number,
+	scale: number?
+): Model?
+	local m = Assets.clone(name)
+	if not m then
+		return nil
+	end
+	if scale and scale ~= 1 then
+		m:ScaleTo(m:GetScale() * scale)
+	end
+	local world = origin * CFrame.new(x, 0, z)
+	Assets.place(m, world.X, origin.Y, world.Z, yaw, 0)
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CanCollide = true
+			d.CanQuery = true
+		end
+	end
+	m.Parent = parent
+	return m
+end
+
+local function buildPorch(parent: Instance, origin: CFrame)
+	local porch = Builder.folder("Porch", parent)
+	local x0, x1, z0, z1 = -3, 11, HZ + 1, HZ + 7
+	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+	Builder.part({
+		name = "Deck",
+		size = Vector3.new(x1 - x0, 1, z1 - z0),
+		cframe = origin * CFrame.new(cx, -0.5, cz),
+		color = WOOD,
+		material = Enum.Material.WoodPlanks,
+		parent = porch,
+	})
+	for i, dy in { -1.5, -2.5 } do
+		Builder.part({
+			name = "Step",
+			size = Vector3.new(6, 1, 2),
+			cframe = origin * CFrame.new(4, dy, z1 + 1 + (i - 1) * 2),
+			color = WOOD_DARK,
+			material = Enum.Material.WoodPlanks,
+			parent = porch,
+		})
+	end
+	for _, p in
+		{ { x0 + 0.4, z1 - 0.4 }, { x1 - 0.4, z1 - 0.4 }, { x0 + 0.4, z0 + 0.4 }, { x1 - 0.4, z0 + 0.4 } }
+	do
+		Builder.part({
+			name = "Post",
+			size = Vector3.new(0.8, 9.5, 0.8),
+			cframe = origin * CFrame.new(p[1], 4.75, p[2]),
+			color = WOOD_DARK,
+			material = Enum.Material.Wood,
+			parent = porch,
+		})
+	end
+	Builder.part({
+		name = "PorchRoof",
+		size = Vector3.new(x1 - x0 + 1.5, 0.6, z1 - z0 + 1.5),
+		cframe = origin * CFrame.new(cx, 9.8, cz) * CFrame.Angles(math.rad(-8), 0, 0),
+		color = ROOF,
+		material = Enum.Material.WoodPlanks,
+		parent = porch,
+	})
+	-- Railings, with a gap for the steps.
+	local function rail(a: Vector3, b: Vector3)
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude
+		Builder.part({
+			name = "Rail",
+			size = Vector3.new(0.35, 0.35, len),
+			cframe = origin * CFrame.lookAt(mid, b),
+			color = WOOD_DARK,
+			material = Enum.Material.Wood,
+			parent = porch,
+		})
+		local n = math.floor(len / 1.2)
+		for i = 1, n - 1 do
+			local p = a + (b - a) * (i / n) - Vector3.new(0, 1.3, 0)
+			Builder.part({
+				name = "Baluster",
+				size = Vector3.new(0.2, 2.6, 0.2),
+				cframe = origin * CFrame.new(p),
+				color = WOOD,
+				material = Enum.Material.Wood,
+				canQuery = false,
+				parent = porch,
+			})
+		end
+	end
+	rail(Vector3.new(x0 + 0.4, 3, z0 + 0.4), Vector3.new(x0 + 0.4, 3, z1 - 0.4))
+	rail(Vector3.new(x1 - 0.4, 3, z0 + 0.4), Vector3.new(x1 - 0.4, 3, z1 - 0.4))
+	rail(Vector3.new(x0 + 0.4, 3, z1 - 0.4), Vector3.new(1, 3, z1 - 0.4))
+	rail(Vector3.new(7, 3, z1 - 0.4), Vector3.new(x1 - 0.4, 3, z1 - 0.4))
+	-- Firewood stack against the wall: the outdoor wood corner.
+	for row = 0, 2 do
+		for i = 0, 5 do
+			Builder.part({
+				name = "Firewood",
+				shape = Enum.PartType.Cylinder,
+				size = Vector3.new(3, 0.8, 0.8),
+				cframe = origin
+					* CFrame.new(-16 + i * 0.85, 0.5 + row * 0.75, HZ + 2)
+					* CFrame.Angles(0, math.rad(90), 0),
+				color = Color3.fromRGB(110 + (i * 7) % 20, 78, 50),
+				material = Enum.Material.Wood,
+				parent = porch,
+			})
+		end
+	end
+end
+
 function Cabin.build(parent: Instance, position: Vector3): Built
 	local model = Builder.model("Cabin", parent)
 	local origin = CFrame.new(position)
 	local structure = Builder.folder("Structure", model)
 
-	-- Floor and foundation
+	-- Floor, stone skirt and foundation
 	Builder.part({
 		name = "Floor",
-		size = Vector3.new(30, 1, 24),
+		size = Vector3.new(2 * HX + 2, 1, 2 * HZ + 2),
 		cframe = origin * CFrame.new(0, -0.5, 0),
 		color = WOOD_LIGHT,
 		material = Enum.Material.WoodPlanks,
 		parent = structure,
 	})
-	for _, p in { { -14, -11 }, { 14, -11 }, { -14, 11 }, { 14, 11 }, { 0, -11 }, { 0, 11 } } do
+	for _, s in { { 0, -(HZ + 0.6), 2 * HX + 3, 1.4 }, { 0, HZ + 0.6, 2 * HX + 3, 1.4 } } do
 		Builder.part({
-			name = "Foundation",
-			size = Vector3.new(2.4, 9, 2.4),
-			cframe = origin * CFrame.new(p[1], -5.5, p[2]),
+			name = "Skirt",
+			size = Vector3.new(s[3], 4, s[4]),
+			cframe = origin * CFrame.new(s[1], -2.6, s[2]),
 			color = STONE,
 			material = Enum.Material.Cobblestone,
 			parent = structure,
 		})
 	end
-	-- Porch step
-	Builder.part({
-		name = "Porch",
-		size = Vector3.new(10, 1, 5),
-		cframe = origin * CFrame.new(4, -0.6, 14.5),
-		color = WOOD,
-		material = Enum.Material.WoodPlanks,
-		parent = structure,
-	})
-	Builder.part({
-		name = "Step",
-		size = Vector3.new(6, 1, 2.5),
-		cframe = origin * CFrame.new(4, -1.6, 18),
-		color = WOOD_DARK,
-		material = Enum.Material.WoodPlanks,
-		parent = structure,
-	})
+	for _, x in { -(HX + 0.6), HX + 0.6 } do
+		Builder.part({
+			name = "Skirt",
+			size = Vector3.new(1.4, 4, 2 * HZ + 3),
+			cframe = origin * CFrame.new(x, -2.6, 0),
+			color = STONE,
+			material = Enum.Material.Cobblestone,
+			parent = structure,
+		})
+	end
+	for _, p in { { -HX, -HZ }, { HX, -HZ }, { -HX, HZ }, { HX, HZ }, { 0, -HZ }, { 0, HZ }, { 0, 0 } } do
+		Builder.part({
+			name = "Foundation",
+			size = Vector3.new(2.4, 10, 2.4),
+			cframe = origin * CFrame.new(p[1], -6, p[2]),
+			color = STONE,
+			material = Enum.Material.Cobblestone,
+			parent = structure,
+		})
+	end
 
-	-- Walls
-	wall(structure, origin, "x", 11.5, -15, 15, { { 4, 5, 0, 8 }, { -7, 4, 3.5, 7.5 } })
-	wall(structure, origin, "x", -11.5, -15, 15, { { -2, 9, 3, 8 } })
-	wall(structure, origin, "z", 14.5, -11, 11, { { 0, 5, 3.5, 7.5 } })
-	wall(structure, origin, "z", -14.5, -11, 11, {})
-	-- Log corner posts for character
-	for _, p in { { -14.5, -11.5 }, { 14.5, -11.5 }, { -14.5, 11.5 }, { 14.5, 11.5 } } do
+	-- Exterior walls
+	local wz, wx = HZ + 0.5, HX + 0.5
+	wall(structure, origin, "x", wz, -(HX + 1), HX + 1, { { 4, 5, 0, 8.5 }, { -10, 5, 3.5, 8 } })
+	wall(structure, origin, "x", -wz, -(HX + 1), HX + 1, { { -4, 11, 3, 8.5 } })
+	wall(structure, origin, "z", wx, -HZ, HZ, { { -6, 5, 3.5, 8 } })
+	wall(structure, origin, "z", -wx, -HZ, HZ, {})
+	trim(structure, origin, "x", wz + 0.55, -(HX + 1), -12.6)
+	trim(structure, origin, "x", wz + 0.55, -7.4, 1.4)
+	trim(structure, origin, "x", wz + 0.55, 6.6, HX + 1)
+	trim(structure, origin, "x", -wz - 0.55, -(HX + 1), -9.6)
+	trim(structure, origin, "x", -wz - 0.55, 1.6, HX + 1)
+	trim(structure, origin, "z", -wx - 0.55, -HZ, -3)
+	trim(structure, origin, "z", -wx - 0.55, 3, HZ)
+	trim(structure, origin, "z", wx + 0.55, -HZ, -8.6)
+	trim(structure, origin, "z", wx + 0.55, -3.4, HZ)
+	for _, p in { { -wx, -wz }, { wx, -wz }, { -wx, wz }, { wx, wz } } do
 		Builder.part({
 			name = "CornerPost",
-			size = Vector3.new(1.6, H, 1.6),
+			size = Vector3.new(1.8, H, 1.8),
 			cframe = origin * CFrame.new(p[1], H / 2, p[2]),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
 			parent = structure,
 		})
 	end
+	-- Interior walls: bedroom (north-east) with a doorway.
+	local interior = Color3.fromRGB(150, 116, 82)
+	wall(structure, origin, "z", 8, -HZ, 2, { { -3, 4, 0, 8.5 } }, interior)
+	wall(structure, origin, "x", 2, 8.5, HX, {}, interior)
 
-	-- Roof: gable along X.
-	local rise, run = 6, 12.8
+	-- Roof: gable along X with overhangs.
+	local rise, run = 7.5, HZ + 2.2
 	local slant = math.sqrt(rise * rise + run * run)
 	local angle = math.atan2(rise, run)
 	for _, s in { -1, 1 } do
 		local roof = Builder.part({
 			name = "Roof",
-			size = Vector3.new(33, 0.8, slant + 0.6),
+			size = Vector3.new(2 * HX + 5, 0.9, slant + 0.6),
 			cframe = origin * CFrame.new(0, H + rise / 2, s * run / 2) * CFrame.Angles(s * angle, 0, 0),
-			color = Color3.fromRGB(66, 54, 48),
+			color = ROOF,
 			material = Enum.Material.WoodPlanks,
 			parent = structure,
 		})
 		roof:SetAttribute("RoofMaterial", "Wood")
+		-- Shingle rows for texture.
+		for i = 1, 6 do
+			Builder.part({
+				name = "Shingles",
+				size = Vector3.new(2 * HX + 5.2, 0.25, 0.6),
+				cframe = roof.CFrame * CFrame.new(0, 0.5, -slant / 2 + i * slant / 7),
+				color = Color3.fromRGB(60, 40, 36),
+				material = Enum.Material.Slate,
+				canCollide = false,
+				canQuery = false,
+				castShadow = false,
+				parent = structure,
+			})
+		end
 	end
 	Builder.part({
 		name = "Ridge",
-		size = Vector3.new(33.4, 0.8, 1),
-		cframe = origin * CFrame.new(0, H + rise + 0.2, 0),
+		size = Vector3.new(2 * HX + 5.4, 0.9, 1.2),
+		cframe = origin * CFrame.new(0, H + rise + 0.25, 0),
 		color = WOOD_DARK,
 		material = Enum.Material.Wood,
 		parent = structure,
 	})
-	for _, x in { -14.5, 14.5 } do
+	for _, x in { -wx, wx } do
 		Builder.wedge({
 			name = "Gable",
-			size = Vector3.new(1, rise, 11.5),
-			cframe = origin * CFrame.new(x, H + rise / 2, 5.75) * CFrame.Angles(0, math.pi, 0),
+			size = Vector3.new(1, rise, HZ + 0.5),
+			cframe = origin * CFrame.new(x, H + rise / 2, (HZ + 0.5) / 2) * CFrame.Angles(0, math.pi, 0),
 			color = WOOD,
 			material = Enum.Material.WoodPlanks,
 			parent = structure,
 		})
 		Builder.wedge({
 			name = "Gable",
-			size = Vector3.new(1, rise, 11.5),
-			cframe = origin * CFrame.new(x, H + rise / 2, -5.75),
+			size = Vector3.new(1, rise, HZ + 0.5),
+			cframe = origin * CFrame.new(x, H + rise / 2, -(HZ + 0.5) / 2),
 			color = WOOD,
 			material = Enum.Material.WoodPlanks,
 			parent = structure,
 		})
 	end
-	-- Ceiling beams
-	for _, z in { -6, 0, 6 } do
+	for _, z in { -8, -2.5, 3, 8.5 } do
 		Builder.part({
 			name = "Beam",
-			size = Vector3.new(28, 0.8, 0.8),
+			size = Vector3.new(2 * HX, 0.8, 0.8),
 			cframe = origin * CFrame.new(0, H - 0.4, z),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
@@ -453,37 +682,48 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 			parent = structure,
 		})
 	end
+	buildPorch(model, origin)
 
 	-- Fireplace and chimney (west wall)
 	local fire = Builder.folder("Fireplace", model)
+	local hx = -(HX - 1.5)
 	Builder.part({
 		name = "Hearth",
-		size = Vector3.new(3, 6.5, 8),
-		cframe = origin * CFrame.new(-12.5, 3.25, 0),
+		size = Vector3.new(3, 7, 9),
+		cframe = origin * CFrame.new(hx, 3.5, 0),
 		color = STONE,
 		material = Enum.Material.Cobblestone,
 		parent = fire,
 	})
 	local firebox = Builder.part({
 		name = "Firebox",
-		size = Vector3.new(0.4, 3, 4),
-		cframe = origin * CFrame.new(-10.85, 1.9, 0),
+		size = Vector3.new(0.4, 3.2, 4.4),
+		cframe = origin * CFrame.new(hx + 1.65, 2, 0),
 		color = Color3.fromRGB(22, 18, 16),
 		material = Enum.Material.Slate,
 		parent = fire,
 	})
 	Builder.part({
+		name = "HearthStone",
+		size = Vector3.new(3, 0.3, 9),
+		cframe = origin * CFrame.new(hx + 2.8, 0.15, 0),
+		color = Color3.fromRGB(90, 86, 82),
+		material = Enum.Material.Slate,
+		canCollide = false,
+		parent = fire,
+	})
+	Builder.part({
 		name = "Mantel",
-		size = Vector3.new(3.8, 0.5, 9),
-		cframe = origin * CFrame.new(-12.2, 6.75, 0),
+		size = Vector3.new(3.8, 0.5, 10),
+		cframe = origin * CFrame.new(hx + 0.3, 7.25, 0),
 		color = WOOD_DARK,
 		material = Enum.Material.Wood,
 		parent = fire,
 	})
 	Builder.part({
 		name = "Chimney",
-		size = Vector3.new(3.2, 22, 5),
-		cframe = origin * CFrame.new(-16.2, 9, 0),
+		size = Vector3.new(3.6, 27, 5.5),
+		cframe = origin * CFrame.new(-(HX + 2.4), 11, 0),
 		color = STONE,
 		material = Enum.Material.Cobblestone,
 		parent = fire,
@@ -494,7 +734,7 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 			shape = Enum.PartType.Cylinder,
 			size = Vector3.new(3, 0.6, 0.6),
 			cframe = origin
-				* CFrame.new(-10.4, 0.4 + (i == 3 and 0.5 or 0), (i - 2) * 0.7)
+				* CFrame.new(hx + 2.1, 0.4 + (if i == 3 then 0.5 else 0), (i - 2) * 0.7)
 				* CFrame.Angles(0, math.rad(90 + i * 8), 0),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
@@ -505,7 +745,7 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local flame = Builder.part({
 		name = "FireCore",
 		size = Vector3.new(1, 1, 1),
-		cframe = origin * CFrame.new(-10.3, 1.1, 0),
+		cframe = origin * CFrame.new(hx + 2.2, 1.1, 0),
 		transparency = 1,
 		canCollide = false,
 		canQuery = false,
@@ -525,7 +765,7 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	smoke.Size = 3
 	smoke.Enabled = false
 	smoke.Parent = fire:FindFirstChild("Chimney") :: Instance
-	local fireLight = Builder.pointLight(flame, Color3.fromRGB(255, 140, 70), 22, 2.2, true)
+	local fireLight = Builder.pointLight(flame, Color3.fromRGB(255, 140, 70), 24, 2.2, true)
 	fireLight.Enabled = false
 	flame:SetAttribute("On", false)
 	flame:SetAttribute("Electric", false)
@@ -550,10 +790,10 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 		entries,
 		origin,
 		"North",
-		Vector3.new(-2, 5.5, -11.5),
+		Vector3.new(-4, 5.75, -wz),
 		Vector3.new(0, 0, -1),
-		9,
-		5,
+		11,
+		5.5,
 		100,
 		true,
 		false
@@ -562,10 +802,10 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 		entries,
 		origin,
 		"East",
-		Vector3.new(14.5, 5.5, 0),
+		Vector3.new(wx, 5.75, -6),
 		Vector3.new(1, 0, 0),
 		5,
-		4,
+		4.5,
 		40,
 		false,
 		true
@@ -574,15 +814,14 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 		entries,
 		origin,
 		"South",
-		Vector3.new(-7, 5.5, 11.5),
+		Vector3.new(-10, 5.75, wz),
 		Vector3.new(0, 0, 1),
-		4,
-		4,
+		5,
+		4.5,
 		100,
 		false,
 		false
 	)
-	-- The roof counts as an entry point that is always intact in this prototype.
 	local roofEntry = Instance.new("Configuration")
 	roofEntry.Name = "RoofEntry"
 	roofEntry.Parent = entries
@@ -593,9 +832,9 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local ceiling = light(
 		lights,
 		"CeilingLamp",
-		origin * CFrame.new(0, H - 1.6, 0),
-		Vector3.new(1.2, 0.6, 1.2),
-		26,
+		origin * CFrame.new(-3, H - 1.8, -1),
+		Vector3.new(1.4, 0.6, 1.4),
+		30,
 		1.1,
 		true,
 		true,
@@ -604,30 +843,44 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	)
 	Builder.part({
 		name = "LampCord",
-		size = Vector3.new(0.1, 1.2, 0.1),
-		cframe = origin * CFrame.new(0, H - 0.8, 0),
+		size = Vector3.new(0.1, 1.4, 0.1),
+		cframe = origin * CFrame.new(-3, H - 0.8, -1),
 		color = Color3.fromRGB(30, 30, 30),
 		canCollide = false,
 		canQuery = false,
 		parent = lights,
 	})
+	local bedroomLamp = light(
+		lights,
+		"BedroomLamp",
+		origin * CFrame.new(13, H - 1.8, -5.5),
+		Vector3.new(1.2, 0.6, 1.2),
+		18,
+		0.8,
+		false,
+		true,
+		true,
+		false
+	)
+	local bedroomPrompt = Builder.prompt(bedroomLamp, "Lamp on", "Bedroom lamp", 0, 9)
+	bedroomPrompt.Name = "LampPrompt"
+	bedroomPrompt:SetAttribute("Target", bedroomLamp.Name)
 	local porch = light(
 		lights,
 		"PorchLight",
-		origin * CFrame.new(4, 9.3, 12.3),
+		origin * CFrame.new(4, 9.2, wz + 0.9),
 		Vector3.new(0.8, 0.8, 0.5),
-		20,
+		22,
 		1,
 		true,
 		true,
 		false,
 		false
 	)
-	-- Switches by the door
 	local switchPlate = Builder.part({
 		name = "LightSwitch",
 		size = Vector3.new(0.6, 1, 0.2),
-		cframe = origin * CFrame.new(7.4, 4.5, 10.85),
+		cframe = origin * CFrame.new(7.6, 4.5, HZ - 0.15),
 		color = Color3.fromRGB(220, 214, 200),
 		parent = lights,
 	})
@@ -642,7 +895,7 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local fuse = Builder.part({
 		name = "FuseBox",
 		size = Vector3.new(1.4, 2, 0.5),
-		cframe = origin * CFrame.new(10, 5, 10.75),
+		cframe = origin * CFrame.new(10.5, 5, HZ - 0.25),
 		color = Color3.fromRGB(70, 74, 72),
 		material = Enum.Material.Metal,
 		parent = lights,
@@ -655,18 +908,18 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local furniture = Builder.folder("Furniture", model)
 	Builder.part({
 		name = "Rug",
-		size = Vector3.new(11, 0.1, 7),
-		cframe = origin * CFrame.new(-3, 0.05, -2),
-		color = Color3.fromRGB(120, 60, 44),
+		size = Vector3.new(14, 0.1, 9),
+		cframe = origin * CFrame.new(-6, 0.05, -2),
+		color = Color3.fromRGB(124, 62, 46),
 		material = Enum.Material.Fabric,
 		canCollide = false,
 		parent = furniture,
 	})
-	-- Armchair facing the north window
-	local chairCF = origin * CFrame.new(-2, 0, -5)
+	-- Rocking chair facing the north window. The Seat is what the player uses.
+	local chairCF = origin * CFrame.new(-4, 0, -7.5)
 	local seat = Instance.new("Seat")
 	seat.Name = "WindowChair"
-	seat.Size = Vector3.new(3, 1, 3)
+	seat.Size = Vector3.new(2.6, 0.6, 2.6)
 	seat.CFrame = chairCF * CFrame.new(0, 1.6, 0)
 	seat.Anchored = true
 	seat.Color = FABRIC
@@ -675,63 +928,84 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	seat.Parent = furniture
 	seat:SetAttribute("Comfort", true)
 	CollectionService:AddTag(seat, "ComfortSeat")
+	local rocker = asset("RockingChair", furniture, origin, -4, -7.5, math.pi)
+	if rocker then
+		seat.Transparency = 1
+		for _, d in rocker:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.CanCollide = false
+			end
+		end
+	else
+		Builder.part({
+			name = "ChairBack",
+			size = Vector3.new(3, 3.4, 0.6),
+			cframe = chairCF * CFrame.new(0, 3.3, 1.4),
+			color = FABRIC,
+			material = Enum.Material.Fabric,
+			parent = furniture,
+		})
+	end
+	-- Armchair by the fire (faces the hearth)
+	local armCF = origin * CFrame.new(-11, 0, 6) * CFrame.Angles(0, math.rad(-120), 0)
+	local arm = Instance.new("Seat")
+	arm.Name = "FireChair"
+	arm.Size = Vector3.new(3, 1, 3)
+	arm.CFrame = armCF * CFrame.new(0, 1.6, 0)
+	arm.Anchored = true
+	arm.Color = Color3.fromRGB(94, 70, 52)
+	arm.Material = Enum.Material.Fabric
+	arm.Parent = furniture
+	CollectionService:AddTag(arm, "ComfortSeat")
 	Builder.part({
-		name = "ChairBack",
-		size = Vector3.new(3, 3.4, 0.6),
-		cframe = chairCF * CFrame.new(0, 3.3, 1.4),
-		color = FABRIC,
+		name = "ArmchairBack",
+		size = Vector3.new(3.2, 3.6, 0.8),
+		cframe = armCF * CFrame.new(0, 3.2, 1.5),
+		color = Color3.fromRGB(94, 70, 52),
 		material = Enum.Material.Fabric,
 		parent = furniture,
 	})
-	for _, s in { -1, 1 } do
+	Builder.part({
+		name = "ArmchairBase",
+		size = Vector3.new(3.2, 1.1, 3.2),
+		cframe = armCF * CFrame.new(0, 0.55, 0),
+		color = WOOD_DARK,
+		material = Enum.Material.Wood,
+		parent = furniture,
+	})
+	-- Bookshelves flanking the fireplace
+	for _, z in { -8, 8 } do
+		if not asset("Bookshelf", furniture, origin, -(HX - 1.2), z, math.rad(90)) then
+			Builder.part({
+				name = "Shelf",
+				size = Vector3.new(1.6, 8, 4),
+				cframe = origin * CFrame.new(-(HX - 0.8), 4, z),
+				color = WOOD_DARK,
+				material = Enum.Material.Wood,
+				parent = furniture,
+			})
+		end
+	end
+	-- Bed (bedroom)
+	local bedModel = asset("Bed", furniture, origin, 13.4, -7, 0, 0.8)
+	if not bedModel then
 		Builder.part({
-			name = "ChairArm",
-			size = Vector3.new(0.5, 1.2, 3),
-			cframe = chairCF * CFrame.new(s * 1.6, 2.3, 0),
-			color = WOOD_DARK,
-			material = Enum.Material.Wood,
-			parent = furniture,
-		})
-		Builder.part({
-			name = "Rocker",
-			size = Vector3.new(0.3, 0.4, 3.6),
-			cframe = chairCF * CFrame.new(s * 1.3, 0.25, 0),
+			name = "BedFrame",
+			size = Vector3.new(5, 1.4, 8),
+			cframe = origin * CFrame.new(13.4, 0.7, -7),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
 			parent = furniture,
 		})
 	end
-	Builder.part({
-		name = "ChairBase",
-		size = Vector3.new(2.6, 1.1, 2.6),
-		cframe = chairCF * CFrame.new(0, 0.75, 0),
-		color = WOOD_DARK,
-		material = Enum.Material.Wood,
-		parent = furniture,
-	})
-	-- Bed (NW corner)
-	Builder.part({
-		name = "BedFrame",
-		size = Vector3.new(4.5, 1.4, 6),
-		cframe = origin * CFrame.new(-11.2, 0.7, -7.8),
-		color = WOOD_DARK,
-		material = Enum.Material.Wood,
-		parent = furniture,
-	})
 	local blanket = Builder.part({
 		name = "Blanket",
-		size = Vector3.new(4.3, 0.6, 4.6),
-		cframe = origin * CFrame.new(-11.2, 1.7, -7.2),
+		size = Vector3.new(5, 0.6, 6),
+		cframe = origin * CFrame.new(13.4, 2.2, -6),
 		color = Color3.fromRGB(70, 86, 110),
 		material = Enum.Material.Fabric,
-		parent = furniture,
-	})
-	Builder.part({
-		name = "Pillow",
-		size = Vector3.new(3.4, 0.6, 1.2),
-		cframe = origin * CFrame.new(-11.2, 1.8, -10.1),
-		color = Color3.fromRGB(220, 214, 196),
-		material = Enum.Material.Fabric,
+		transparency = if bedModel then 1 else 0,
+		canCollide = false,
 		parent = furniture,
 	})
 	local sleepPrompt = Builder.prompt(blanket, "Sleep until dawn", "Bed", 1.2, 8)
@@ -739,7 +1013,7 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local respawn = Builder.part({
 		name = "BedRespawn",
 		size = Vector3.new(1, 1, 1),
-		cframe = origin * CFrame.new(-8, 3, -7.5),
+		cframe = origin * CFrame.new(11, 3, -1),
 		transparency = 1,
 		canCollide = false,
 		canQuery = false,
@@ -750,26 +1024,36 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local dogBed = Builder.part({
 		name = "DogBed",
 		size = Vector3.new(4, 0.7, 3.2),
-		cframe = origin * CFrame.new(-8.6, 0.35, 6.5),
+		cframe = origin * CFrame.new(-12.5, 0.35, 8.5),
 		color = Color3.fromRGB(150, 64, 52),
 		material = Enum.Material.Fabric,
 		parent = furniture,
 	})
 	CollectionService:AddTag(dogBed, "DogBed")
-	-- Table with lamp and radio
-	Builder.part({
+	-- Table with lamp, radio and a lantern
+	local tableTop = Builder.part({
 		name = "TableTop",
-		size = Vector3.new(5, 0.4, 3.4),
-		cframe = origin * CFrame.new(4, 3.1, 2),
+		size = Vector3.new(6, 0.4, 3.6),
+		cframe = origin * CFrame.new(2, 3.1, 4),
 		color = WOOD,
 		material = Enum.Material.Wood,
 		parent = furniture,
 	})
-	for _, p in { { -2.2, -1.4 }, { 2.2, -1.4 }, { -2.2, 1.4 }, { 2.2, 1.4 } } do
+	for _, p in { { -2.6, -1.5 }, { 2.6, -1.5 }, { -2.6, 1.5 }, { 2.6, 1.5 } } do
 		Builder.part({
 			name = "TableLeg",
 			size = Vector3.new(0.4, 2.9, 0.4),
-			cframe = origin * CFrame.new(4 + p[1], 1.45, 2 + p[2]),
+			cframe = origin * CFrame.new(2 + p[1], 1.45, 4 + p[2]),
+			color = WOOD_DARK,
+			material = Enum.Material.Wood,
+			parent = furniture,
+		})
+	end
+	for _, x in { -0.5, 4.5 } do
+		Builder.part({
+			name = "Stool",
+			size = Vector3.new(1.6, 2, 1.6),
+			cframe = origin * CFrame.new(x, 1, 6.6),
 			color = WOOD_DARK,
 			material = Enum.Material.Wood,
 			parent = furniture,
@@ -778,9 +1062,9 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local tableLamp = light(
 		lights,
 		"TableLamp",
-		origin * CFrame.new(5.6, 4.3, 1.4),
+		origin * CFrame.new(3.8, 4.3, 3.4),
 		Vector3.new(0.9, 0.9, 0.9),
-		14,
+		16,
 		0.9,
 		true,
 		true,
@@ -793,7 +1077,7 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local radio = Builder.part({
 		name = "Radio",
 		size = Vector3.new(1.8, 1, 1),
-		cframe = origin * CFrame.new(2.8, 3.8, 2.2),
+		cframe = origin * CFrame.new(0.6, 3.8, 4.2),
 		color = Color3.fromRGB(60, 50, 40),
 		material = Enum.Material.Wood,
 		parent = furniture,
@@ -801,22 +1085,39 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	CollectionService:AddTag(radio, "CabinRadio")
 	local radioPrompt = Builder.prompt(radio, "Listen to the radio", "Radio", 0, 7)
 	radioPrompt.Name = "RadioPrompt"
-	-- Wardrobe (the coat)
+	local lantern = Assets.clone("Lantern")
+	if lantern then
+		lantern:ScaleTo(lantern:GetScale() * 1.3)
+		local w = origin * CFrame.new(-(HX - 1.8), 0, 3)
+		Assets.place(lantern, w.X, origin.Y + 7.5, w.Z, 0, 0)
+		lantern.Parent = furniture
+	end
+	local _ = tableTop
+	-- Wardrobe (the coat) in the bedroom
 	local wardrobe = Builder.part({
 		name = "Wardrobe",
-		size = Vector3.new(3, 8, 4.4),
-		cframe = origin * CFrame.new(12.4, 4, -8.4),
+		size = Vector3.new(3, 8.5, 4.4),
+		cframe = origin * CFrame.new(HX - 1.6, 4.25, -0.4),
 		color = WOOD_DARK,
 		material = Enum.Material.Wood,
 		parent = furniture,
 	})
+	Builder.part({
+		name = "WardrobeTrim",
+		size = Vector3.new(0.2, 7.6, 0.2),
+		cframe = origin * CFrame.new(HX - 3.15, 4.25, -0.4),
+		color = Color3.fromRGB(180, 150, 90),
+		material = Enum.Material.Metal,
+		canCollide = false,
+		parent = furniture,
+	})
 	local wardrobePrompt = Builder.prompt(wardrobe, "Search the wardrobe", "Wardrobe", 1, 8)
 	wardrobePrompt.Name = "WardrobePrompt"
-	-- Workbench
+	-- Workbench against the north wall, east of the window
 	local bench = Builder.part({
 		name = "Workbench",
-		size = Vector3.new(6, 3.2, 2.4),
-		cframe = origin * CFrame.new(7, 1.6, -9.6),
+		size = Vector3.new(5, 3.2, 2.4),
+		cframe = origin * CFrame.new(4.6, 1.6, -(HZ - 1.3)),
 		color = WOOD,
 		material = Enum.Material.WoodPlanks,
 		parent = furniture,
@@ -825,11 +1126,19 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local benchPrompt = Builder.prompt(bench, "Craft", "Workbench", 0, 8)
 	benchPrompt.Name = "CraftPrompt"
 	benchPrompt:SetAttribute("ClientAction", "Craft")
-	-- Storage chest
+	-- Nook: counter and storage chest
+	Builder.part({
+		name = "Counter",
+		size = Vector3.new(2.6, 3.4, 8),
+		cframe = origin * CFrame.new(HX - 1.4, 1.7, 7.5),
+		color = WOOD,
+		material = Enum.Material.WoodPlanks,
+		parent = furniture,
+	})
 	local chest = Builder.part({
 		name = "Chest",
 		size = Vector3.new(4, 2.4, 2.4),
-		cframe = origin * CFrame.new(11.6, 1.2, 6),
+		cframe = origin * CFrame.new(12, 1.2, 4),
 		color = Color3.fromRGB(96, 66, 42),
 		material = Enum.Material.WoodPlanks,
 		parent = furniture,
@@ -838,20 +1147,11 @@ function Cabin.build(parent: Instance, position: Vector3): Built
 	local chestPrompt = Builder.prompt(chest, "Open storage", "Chest", 0, 8)
 	chestPrompt.Name = "ChestPrompt"
 	chestPrompt:SetAttribute("ClientAction", "Storage")
-	-- Shelf with jars
-	Builder.part({
-		name = "Shelf",
-		size = Vector3.new(5, 0.3, 1.2),
-		cframe = origin * CFrame.new(9, 6.5, 10.4),
-		color = WOOD_DARK,
-		material = Enum.Material.Wood,
-		parent = furniture,
-	})
 
 	-- Shelter volume: the registered interior.
 	local volume = Builder.part({
 		name = "ShelterVolume",
-		size = Vector3.new(28, H, 22),
+		size = Vector3.new(2 * HX, H, 2 * HZ),
 		cframe = origin * CFrame.new(0, H / 2, 0),
 		transparency = 1,
 		canCollide = false,
