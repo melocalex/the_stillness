@@ -7,7 +7,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
 local TimeCycle = require(ReplicatedStorage.Shared.Logic.TimeCycle)
+
+local AIR = WorldConfig.Atmosphere
 
 local LightingController = {}
 
@@ -39,8 +42,8 @@ function LightingController.start()
 	bloom.Threshold = 1.6
 	rays.Intensity = 0.06
 	rays.Spread = 0.6
-	atmosphere.Offset = 0.12
-	atmosphere.Glare = 0.2
+	atmosphere.Offset = AIR.Offset
+	atmosphere.Glare = AIR.Glare
 	Lighting.EnvironmentDiffuseScale = 0.6
 	Lighting.EnvironmentSpecularScale = 0.5
 	Lighting.ShadowSoftness = 0.25
@@ -70,9 +73,13 @@ function LightingController.start()
 		Lighting.Brightness = v[1] * gloom
 		Lighting.Ambient = c3(v[2], v[3], v[4])
 		Lighting.OutdoorAmbient = c3(v[5] * gloom, v[6] * gloom, v[7] * gloom)
-		atmosphere.Density = math.clamp(v[8] + fogBlend * 0.32, 0, 0.85)
-		atmosphere.Haze = v[9] + fogBlend * 1.5
-		atmosphere.Color = c3(v[2] * 1.6 + 20, v[3] * 1.6 + 20, v[4] * 1.6 + 26)
+		atmosphere.Density = math.clamp(v[8] + AIR.DensityAdd + fogBlend * 0.32, 0, 0.85)
+		atmosphere.Haze = v[9] + AIR.HazeAdd + fogBlend * 1.5
+		atmosphere.Color = c3(
+			(v[2] * 1.6 + 20) * AIR.Tint[1],
+			(v[3] * 1.6 + 20) * AIR.Tint[2],
+			(v[4] * 1.6 + 26) * AIR.Tint[3]
+		)
 		atmosphere.Decay = c3(v[5] * 0.8, v[6] * 0.8, v[7] * 0.9)
 		Lighting.ColorShift_Top = c3(v[10], v[11], v[12])
 		Lighting.ExposureCompensation = v[13]
