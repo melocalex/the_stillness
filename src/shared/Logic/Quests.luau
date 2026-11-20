@@ -17,6 +17,8 @@ export type Objective = {
 	phases: { string }?,
 	hint: string?,
 	say: { string }?,
+	anyOf: { Objective }?, -- alternatives: any one completes this step
+	flag: string?, -- set when this objective (or this alternative) completes
 }
 
 export type Rewards = {
@@ -60,6 +62,9 @@ export type Entry = {
 	startedAt: number,
 	doneAt: number?,
 	expiresAt: number?,
+	alt: { [number]: number }?, -- progress per alternative of the current step
+	chose: { [string]: number }?, -- step -> which alternative completed it
+	evidence: { [string]: boolean }?, -- evidence ids already counted
 }
 
 export type Log = {
@@ -79,6 +84,7 @@ export type Change = {
 	progress: number,
 	objectiveDone: boolean,
 	completed: boolean,
+	choice: number?, -- the alternative that completed the step
 }
 
 export type Components = {
@@ -185,6 +191,15 @@ function Quests.current(log: Log, def: Def): (Objective?, number)
 	return def.objectives[e.step], e.progress
 end
 
+-- The objectives that can move the current step: its alternatives, or itself.
+function Quests.currentOptions(log: Log, def: Def): { Objective }
+	local obj = Quests.current(log, def)
+	if not obj then
+		return {}
+	end
+	return obj.anyOf or { obj }
+end
+
 local function complete(log: Log, def: Def, e: Entry, now: number)
 	e.status = "done"
 	e.step = #def.objectives + 1
@@ -197,23 +212,71 @@ local function complete(log: Log, def: Def, e: Entry, now: number)
 	end
 end
 
+-- Feeds an event to one step. Returns new progress, whether it moved, whether
+-- it is done, and which alternative finished it.
+local function stepWith(
+	e: Entry,
+	obj: Objective,
+	ev: any,
+	components: Components
+): (number, boolean, boolean, number?)
+	local options = obj.anyOf
+	if not options then
+		local p, done = components.apply(obj, e.progress, ev)
+		return p, p ~= e.progress or done, done, nil
+	end
+	local alt = e.alt or {}
+	e.alt = alt
+	local moved = false
+	for i, opt in options do
+		local before = alt[i] or 0
+		local p, done = components.apply(opt, before, ev)
+		if p ~= before then
+			alt[i] = p
+			moved = true
+		end
+		if done then
+			return 1, true, true, i
+		end
+	end
+	return e.progress, moved, false, nil
+end
+
 -- Routes one event to every active quest's current objective, in definition
 -- order. An objective that completes moves its quest to the next one; the
--- last one completes the quest. Returns what changed.
+-- last one completes the quest. An event's evidence id counts once per
+-- quest. Returns what changed.
 function Quests.apply(log: Log, defs: { Def }, ev: any, components: Components, now: number): { Change }
 	local changes: { Change } = {}
+	local evidence: string? = if type(ev.evidence) == "string" then ev.evidence else nil
 	for _, def in defs do
 		local e = log.entries[def.id]
 		local obj = if e and e.status == "active" then def.objectives[e.step] else nil
-		if e and obj then
-			local p, done = components.apply(obj, e.progress, ev)
-			if p ~= e.progress or done then
+		local repeated = e ~= nil and evidence ~= nil and e.evidence ~= nil and e.evidence[evidence] == true
+		if e and obj and not repeated then
+			local p, moved, done, choice = stepWith(e, obj, ev, components)
+			if moved then
 				local step = e.step
 				e.progress = p
+				if evidence then
+					local seen = e.evidence or {}
+					seen[evidence] = true
+					e.evidence = seen
+				end
 				local completed = false
 				if done then
+					local finished = if choice and obj.anyOf then obj.anyOf[choice] else obj
+					if finished.flag then
+						log.flags[finished.flag] = true
+					end
+					if choice then
+						local chose = e.chose or {}
+						chose[tostring(step)] = choice
+						e.chose = chose
+					end
 					e.step += 1
 					e.progress = 0
+					e.alt = nil
 					if e.step > #def.objectives then
 						complete(log, def, e, now)
 						completed = true
@@ -225,6 +288,7 @@ function Quests.apply(log: Log, defs: { Def }, ev: any, components: Components, 
 					progress = p,
 					objectiveDone = done,
 					completed = completed,
+					choice = choice,
 				})
 			end
 		end
@@ -248,6 +312,24 @@ end
 function Quests.snapshot(log: Log): { [string]: any }
 	local entries = {}
 	for id, e in log.entries do
+		-- JSON-safe: string keys for alternatives, a list for evidence.
+		local alt: { [string]: number }? = nil
+		if e.alt then
+			local a = {}
+			for i, p in e.alt do
+				a[tostring(i)] = p
+			end
+			alt = a
+		end
+		local evidence: { string }? = nil
+		if e.evidence then
+			local list = {}
+			for k in e.evidence do
+				table.insert(list, k)
+			end
+			table.sort(list)
+			evidence = list
+		end
 		entries[id] = {
 			status = e.status,
 			step = e.step,
@@ -255,10 +337,15 @@ function Quests.snapshot(log: Log): { [string]: any }
 			startedAt = e.startedAt,
 			doneAt = e.doneAt,
 			expiresAt = e.expiresAt,
+			alt = alt,
+			chose = if e.chose then table.clone(e.chose) else nil,
+			evidence = evidence,
 		}
 	end
 	return { entries = entries, flags = table.clone(log.flags) }
 end
+
+local MAX_EVIDENCE = 64
 
 local function num(v: any, lo: number, hi: number): number?
 	if type(v) ~= "number" or v ~= v or v < lo or v > hi then
@@ -291,7 +378,7 @@ function Quests.restore(data: any, defs: { Def }): Log
 					elseif step > n then
 						step = n
 					end
-					log.entries[id] = {
+					local entry: Entry = {
 						status = status,
 						step = step,
 						progress = progress,
@@ -299,6 +386,44 @@ function Quests.restore(data: any, defs: { Def }): Log
 						doneAt = num(raw.doneAt, 0, 1e12),
 						expiresAt = if status == "active" then num(raw.expiresAt, 0, 1e12) else nil,
 					}
+					local options = def.objectives[step] and def.objectives[step].anyOf
+					if status == "active" and options and type(raw.alt) == "table" then
+						local alt = {}
+						for k, p in raw.alt do
+							local i = tonumber(k)
+							local v = num(p, 0, 1e6)
+							if i and v and options[i] then
+								alt[i] = v
+							end
+						end
+						entry.alt = alt
+					end
+					if type(raw.chose) == "table" then
+						local chose = {}
+						for k, i in raw.chose do
+							local s = tonumber(k)
+							local opts = s and def.objectives[s] and def.objectives[s].anyOf
+							if type(k) == "string" and opts and type(i) == "number" and opts[i] then
+								chose[k] = i
+							end
+						end
+						entry.chose = chose
+					end
+					if type(raw.evidence) == "table" then
+						local seen = {}
+						for n2, k in raw.evidence do
+							if
+								type(k) == "string"
+								and #k <= 80
+								and type(n2) == "number"
+								and n2 <= MAX_EVIDENCE
+							then
+								seen[k] = true
+							end
+						end
+						entry.evidence = seen
+					end
+					log.entries[id] = entry
 				end
 			end
 		end

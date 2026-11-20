@@ -232,6 +232,7 @@ TownConfig.Projects = {
 		name: string,
 		site: string,
 		quest: string?,
+		scope: string?, -- nil/"player": each player's story; "town": SharedTown
 		actions: { { id: string, text: string, cost: { [string]: number } } },
 		stages: { string },
 		benefit: string,

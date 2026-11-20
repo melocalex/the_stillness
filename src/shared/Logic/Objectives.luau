@@ -13,6 +13,19 @@
 --   weather      sheltered seconds in a weather type
 --   investigate  search a site
 --   locate       find a missing NPC or animal
+--   inspect      look closely at a thing (a shutter, a circuit, a radio)
+--   escort       bring someone to a place (count people)
+--   track        follow a trail to its end (Caramelo)
+--   communicate  reach someone by radio
+--   activate     switch on a device (count devices)
+--   coordinate   get enough participants ready (the event carries how many)
+--   survive      come through a night or event of a given kind
+--
+-- An event may carry `evidence`, a unique id for what was seen or done;
+-- Quests counts each id once per quest, so the same sighting or the same
+-- switch never counts twice. An objective may list `anyOf` alternatives:
+-- any one of them completes it (repair the truck, or lead them to the
+-- shelter), and the chosen one's `flag` records which.
 
 local Objectives = {}
 
@@ -25,6 +38,8 @@ export type Objective = {
 	phases: { string }?,
 	hint: string?,
 	say: { string }?,
+	anyOf: { Objective }?,
+	flag: string?,
 }
 
 export type Event = {
@@ -33,6 +48,7 @@ export type Event = {
 	amount: number?,
 	inventory: { [string]: number }?,
 	phase: string?,
+	evidence: string?,
 }
 
 type Step = (obj: Objective, progress: number, ev: Event, goal: number) -> number
@@ -93,6 +109,13 @@ Objectives.Kinds = {
 	weather = { event = "weather", targeted = true, unit = "s", step = count },
 	investigate = { event = "investigate", targeted = true, step = finish },
 	locate = { event = "locate", targeted = true, step = finish },
+	inspect = { event = "inspect", targeted = true, step = finish },
+	escort = { event = "escort", targeted = true, step = count },
+	track = { event = "track", targeted = true, step = finish },
+	communicate = { event = "communicate", targeted = true, step = finish },
+	activate = { event = "activate", targeted = true, step = count },
+	coordinate = { event = "coordinate", targeted = true, step = atLeast },
+	survive = { event = "survive", targeted = true, step = count },
 } :: { [string]: Component }
 
 function Objectives.known(kind: string): boolean

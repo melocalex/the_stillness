@@ -14,6 +14,7 @@ local Restoration = require("../src/shared/Logic/Restoration")
 local Incidents = require("../src/shared/Logic/Incidents")
 local Dialogue = require("../src/shared/Logic/Dialogue")
 local LifeJournal = require("../src/shared/Logic/LifeJournal")
+local SharedTown = require("../src/shared/Logic/SharedTown")
 local QuestConfig = require("../src/shared/Config/QuestConfig")
 local TownConfig = require("../src/shared/Config/TownConfig")
 local ItemConfig = require("../src/shared/Config/ItemConfig")
@@ -176,6 +177,131 @@ describe("Quests", function()
 		eq(log.flags.evil, nil)
 		local empty = Quests.restore("garbage", DEFS)
 		eq(next(empty.entries), nil)
+	end)
+end)
+
+-- Framework pieces the Protector (39) and Observer (40) campaigns build on.
+describe("Quest framework for later campaigns", function()
+	local function quest(objectives: { any }): Quests.Def
+		return {
+			id = "test",
+			giver = "frank",
+			title = "",
+			context = "",
+			category = "town",
+			objectives = objectives,
+			rewards = {},
+		}
+	end
+	it("ships the campaign objective kinds", function()
+		for _, kind in { "inspect", "escort", "track", "communicate", "activate", "coordinate", "survive" } do
+			truthy(Objectives.known(kind), kind)
+		end
+		local o: Objectives.Objective = { kind = "coordinate", target = "blackout", count = 3, text = "" }
+		local p = Objectives.apply(o, 0, { kind = "coordinate", target = "blackout", amount = 2 })
+		eq(p, 2, "coordinate tracks how many are ready")
+	end)
+	it("counts the same evidence once, and remembers it across a save", function()
+		local def = quest({ { kind = "observe", target = "Watcher", count = 2, text = "" } })
+		local log = Quests.new()
+		Quests.start(log, def, ctx())
+		local ev = { kind = "observe", target = "Watcher", evidence = "Watcher-d3-WINDOW" }
+		eq(#Quests.apply(log, { def }, ev, Objectives, 1), 1)
+		eq(#Quests.apply(log, { def }, ev, Objectives, 2), 0, "a repeat submission earns nothing")
+		local back = Quests.restore(serde.decode("json", serde.encode("json", Quests.snapshot(log))), { def })
+		eq(#Quests.apply(back, { def }, ev, Objectives, 3), 0, "not after a rejoin either")
+		local other = { kind = "observe", target = "Watcher", evidence = "Watcher-d4-SEARCH" }
+		truthy(Quests.apply(back, { def }, other, Objectives, 4)[1].completed)
+	end)
+	it("evidence that moves nothing is not burned", function()
+		local def = quest({
+			{ kind = "talk", target = "hale", text = "" },
+			{ kind = "observe", target = "Watcher", text = "" },
+		})
+		local log = Quests.new()
+		Quests.start(log, def, ctx())
+		local ev = { kind = "observe", target = "Watcher", evidence = "w1" }
+		Quests.apply(log, { def }, ev, Objectives, 1)
+		Quests.apply(log, { def }, { kind = "talk", target = "hale" }, Objectives, 2)
+		truthy(Quests.apply(log, { def }, ev, Objectives, 3)[1].completed)
+	end)
+	it("completes a step by any alternative and records which", function()
+		local def = quest({
+			{
+				kind = "choice",
+				text = "Get them home",
+				anyOf = {
+					{ kind = "repair", target = "Truck", count = 2, text = "", flag = "truckFixed" },
+					{ kind = "escort", target = "Shelter", count = 2, text = "", flag = "ledToShelter" },
+				},
+			},
+			{ kind = "talk", target = "frank", text = "" },
+		})
+		local log = Quests.new()
+		Quests.start(log, def, ctx())
+		Quests.apply(log, { def }, { kind = "repair", target = "Truck", amount = 1 }, Objectives, 1)
+		Quests.apply(log, { def }, { kind = "escort", target = "Shelter" }, Objectives, 2)
+		-- Partial progress on both survives a save.
+		local back = Quests.restore(serde.decode("json", serde.encode("json", Quests.snapshot(log))), { def })
+		local ch = Quests.apply(back, { def }, { kind = "escort", target = "Shelter" }, Objectives, 3)
+		truthy(ch[1].objectiveDone)
+		eq(ch[1].choice, 2)
+		truthy(Quests.hasFlag(back, "ledToShelter"))
+		falsy(Quests.hasFlag(back, "truckFixed"))
+		eq(back.entries.test.chose and back.entries.test.chose["1"], 2)
+		local opts = Quests.currentOptions(back, def)
+		eq(opts[1].kind, "talk", "the next step has no alternatives")
+	end)
+end)
+
+describe("SharedTown", function()
+	it("only moves forward", function()
+		local st = SharedTown.new()
+		truthy(SharedTown.raiseBuilding(st, "School", 2))
+		falsy(SharedTown.raiseBuilding(st, "School", 1))
+		eq(st.buildings.School, 2)
+		truthy(SharedTown.openRoute(st, "Bridge"))
+		falsy(SharedTown.openRoute(st, "Bridge"))
+	end)
+	it("merges two servers' saves without losing either", function()
+		local a, b = SharedTown.new(), SharedTown.new()
+		SharedTown.raiseBuilding(a, "School", 3)
+		SharedTown.raiseBuilding(b, "School", 1)
+		SharedTown.raiseBuilding(b, "Warehouse", 2)
+		SharedTown.openRoute(a, "Bridge")
+		SharedTown.setFlag(b, "radiosTested")
+		local m = SharedTown.merge(a, b)
+		eq(m.buildings.School, 3)
+		eq(m.buildings.Warehouse, 2)
+		truthy(m.routes.Bridge and m.flags.radiosTested)
+		local done, total = SharedTown.readiness(m, { School = 3, Warehouse = 4 })
+		eq(done, 1)
+		eq(total, 2)
+	end)
+	it("round-trips through JSON and rejects bad data", function()
+		local st = SharedTown.new()
+		SharedTown.raiseBuilding(st, "School", 2)
+		SharedTown.openRoute(st, "Bridge")
+		local back = SharedTown.restore(serde.decode("json", serde.encode("json", SharedTown.snapshot(st))))
+		eq(back.buildings.School, 2)
+		truthy(back.routes.Bridge)
+		local bad = SharedTown.restore({ buildings = { X = -1, Y = 0 / 0, [3] = 2 }, routes = "no" })
+		eq(next(bad.buildings), nil)
+		eq(next(bad.routes), nil)
+	end)
+	it("town-scope projects use the same restoration rules on shared buildings", function()
+		local p: Restoration.Project = {
+			id = "School",
+			name = "",
+			site = "",
+			scope = "town",
+			actions = { { id = "a", text = "", cost = {} }, { id = "b", text = "", cost = {} } },
+			stages = { "", "", "" },
+			benefit = "",
+		}
+		local st = SharedTown.new()
+		Restoration.advance(st.buildings, p)
+		eq(Restoration.stage(st.buildings, p), 1)
 	end)
 end)
 
@@ -379,7 +505,14 @@ describe("Progression config", function()
 			for skill in q.rewards.dogSkill or {} do
 				truthy(DOG_SKILLS[skill], q.id .. " skill " .. skill)
 			end
-			for _, o in q.objectives do
+			-- Steps with alternatives are checked option by option.
+			local all: { Objectives.Objective } = {}
+			for _, step in q.objectives do
+				for _, o in (step :: any).anyOf or { step } do
+					table.insert(all, o)
+				end
+			end
+			for _, o in all do
 				local where = q.id .. "/" .. o.kind
 				truthy(Objectives.known(o.kind), where)
 				for item in o.items or {} do

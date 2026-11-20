@@ -18,6 +18,8 @@ type Objective = {
 	phases: { string }?,
 	hint: string?,
 	say: { string }?,
+	anyOf: { Objective }?,
+	flag: string?,
 }
 
 type Quest = {

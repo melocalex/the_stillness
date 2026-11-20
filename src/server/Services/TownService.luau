@@ -26,6 +26,7 @@ local DogTracking = require(script.Parent.DogTracking)
 local MayaService = require(script.Parent.MayaService)
 local PlayerService = require(script.Parent.PlayerService)
 local ProgressionService = require(script.Parent.ProgressionService)
+local SharedTownService = require(script.Parent.SharedTownService)
 local TimeService = require(script.Parent.TimeService)
 
 local TownService = {}
@@ -150,6 +151,10 @@ local function unionStage(projectId: string): number
 	local proj = ProgressionService.project(projectId)
 	if not proj then
 		return 0
+	end
+	-- Town projects show the shared town; personal ones the furthest player here.
+	if proj.scope == "town" then
+		return Restoration.stage(SharedTownService.get().buildings, proj)
 	end
 	local list = {}
 	for _, p in ProgressionService.all() do
@@ -753,6 +758,7 @@ function TownService.start()
 	ProgressionService.onChanged(function()
 		refreshWorld()
 	end)
+	SharedTownService.onChanged(refreshWorld)
 	ProgressionService.onQuestCompleted(function(player: Player, questId: string)
 		local def = ProgressionService.def(questId)
 		if def and def.outro then

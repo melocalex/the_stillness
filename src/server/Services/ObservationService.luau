@@ -95,7 +95,7 @@ local function record(player: Player, id: string, subject: string, text: string)
 	if entry then
 		Net.event("Journal"):FireClient(player, entry)
 		Net.event("SoundCue"):FireClient(player, "journal")
-		ProgressBus.emit(player, "observe", subject)
+		ProgressBus.emit(player, "observe", subject, nil, id)
 	end
 end
 

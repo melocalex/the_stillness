@@ -5,7 +5,15 @@
 
 local ProgressBus = {}
 
-export type Listener = (player: Player, kind: string, target: string?, amount: number?) -> ()
+-- evidence: a unique id for what happened (a journal entry id), so the same
+-- sighting never counts twice toward a quest.
+export type Listener = (
+	player: Player,
+	kind: string,
+	target: string?,
+	amount: number?,
+	evidence: string?
+) -> ()
 
 local listeners: { Listener } = {}
 
@@ -13,9 +21,9 @@ function ProgressBus.listen(fn: Listener)
 	table.insert(listeners, fn)
 end
 
-function ProgressBus.emit(player: Player, kind: string, target: string?, amount: number?)
+function ProgressBus.emit(player: Player, kind: string, target: string?, amount: number?, evidence: string?)
 	for _, fn in listeners do
-		task.spawn(fn, player, kind, target, amount)
+		task.spawn(fn, player, kind, target, amount, evidence)
 	end
 end
 

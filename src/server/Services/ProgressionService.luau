@@ -24,6 +24,7 @@ local Town = require(ReplicatedStorage.Shared.Logic.Town)
 local TownConfig = require(ReplicatedStorage.Shared.Config.TownConfig)
 local NightDirector = require(script.Parent.NightDirector)
 local PlayerService = require(script.Parent.PlayerService)
+local SharedTownService = require(script.Parent.SharedTownService)
 local ProgressBus = require(script.Parent.ProgressBus)
 local TimeService = require(script.Parent.TimeService)
 local WeatherService = require(script.Parent.WeatherService)
@@ -80,6 +81,11 @@ local function projectById(id: string): Restoration.Project?
 		end
 	end
 	return nil
+end
+
+-- Where a project's stage lives: the player's own save, or the shared town.
+local function projectState(p: { projects: Restoration.State }, proj: Restoration.Project): Restoration.State
+	return if proj.scope == "town" then SharedTownService.get().buildings else p.projects
 end
 
 local function offerById(id: string): Town.Offer?
@@ -162,9 +168,10 @@ function ProgressionService.waitingOn(
 		return nil, nil
 	end
 	for _, def in DEFS do
-		local obj = Quests.current(p.log, def)
-		if obj and obj.kind == kind and obj.target == target then
-			return def, obj
+		for _, obj in Quests.currentOptions(p.log, def) do
+			if obj.kind == kind and obj.target == target then
+				return def, obj
+			end
 		end
 	end
 	return nil, nil
@@ -219,7 +226,7 @@ end
 function ProgressionService.projectStage(player: Player, projectId: string): number
 	local p = ProgressionService.get(player)
 	local proj = projectById(projectId)
-	return if p and proj then Restoration.stage(p.projects, proj) else 0
+	return if p and proj then Restoration.stage(projectState(p, proj), proj) else 0
 end
 
 -- Caramelo's saved Tracking skill (0 until Martha's mission is done).
@@ -265,6 +272,16 @@ end
 
 local function whereOf(obj: Quests.Objective?, player: Player): Vector3?
 	if not obj or not locator then
+		return nil
+	end
+	-- Alternatives: point at the first one that has a place.
+	if obj.anyOf then
+		for _, opt in obj.anyOf do
+			local at = whereOf(opt, player)
+			if at then
+				return at
+			end
+		end
 		return nil
 	end
 	local loc = locator :: (string, Player?) -> Vector3?
@@ -371,15 +388,16 @@ local function buildView(p: Progress): any
 	end
 	local projects = {}
 	for _, proj in PROJECTS do
-		local stage = Restoration.stage(p.projects, proj)
+		local st = projectState(p, proj)
+		local stage = Restoration.stage(st, proj)
 		local quest = if proj.quest then p.log.entries[proj.quest] else nil
 		if stage > 0 or quest then
 			table.insert(projects, {
 				name = proj.name,
-				stage = Restoration.stageName(p.projects, proj),
-				fraction = Restoration.fraction(p.projects, proj),
+				stage = Restoration.stageName(st, proj),
+				fraction = Restoration.fraction(st, proj),
 				benefit = proj.benefit,
-				done = Restoration.complete(p.projects, proj),
+				done = Restoration.complete(st, proj),
 			})
 		end
 	end
@@ -526,7 +544,8 @@ function ProgressionService.event(
 	player: Player,
 	kind: string,
 	target: string?,
-	amount: number?
+	amount: number?,
+	evidence: string?
 ): { Quests.Change }
 	local p = ProgressionService.get(player)
 	if not p then
@@ -546,6 +565,7 @@ function ProgressionService.event(
 		amount = amount,
 		phase = TimeService.snapshot().phase,
 		inventory = inventoryOf(player),
+		evidence = evidence,
 	}
 	local changes = applyEvent(p, ev)
 	if #changes > 0 then
@@ -585,7 +605,8 @@ function ProgressionService.repair(player: Player, projectId: string): (boolean,
 	if not p or not proj then
 		return false, ""
 	end
-	if Restoration.complete(p.projects, proj) then
+	local st = projectState(p, proj)
+	if Restoration.complete(st, proj) then
 		return false, proj.name .. " is already restored."
 	end
 	local questId = proj.quest
@@ -596,16 +617,25 @@ function ProgressionService.repair(player: Player, projectId: string): (boolean,
 		end
 		-- Only on the repair step, so an early press never spends what the
 		-- collect step still needs in the pack.
-		local current = Quests.current(p.log, qdef)
-		if not current or current.kind ~= "repair" or current.target ~= projectId then
+		local onStep = false
+		for _, opt in Quests.currentOptions(p.log, qdef) do
+			if opt.kind == "repair" and opt.target == projectId then
+				onStep = true
+			end
+		end
+		if not onStep then
+			local current = Quests.current(p.log, qdef)
 			return false, if current then "First: " .. current.text else ""
 		end
 	end
-	local action = Restoration.nextAction(p.projects, proj) :: Restoration.Action
+	local action = Restoration.nextAction(st, proj) :: Restoration.Action
 	if not PlayerService.spend(player, action.cost) then
 		return false, ""
 	end
-	local stage, finished = Restoration.advance(p.projects, proj)
+	local stage, finished = Restoration.advance(st, proj)
+	if proj.scope == "town" then
+		SharedTownService.touched()
+	end
 	for _, fn in projectListeners do
 		task.spawn(fn, player, projectId, stage, finished)
 	end
@@ -848,8 +878,7 @@ local function tickPlayer(p: Progress, dt: number)
 		return
 	end
 	for _, def in DEFS do
-		local obj = Quests.current(p.log, def)
-		if obj then
+		for _, obj in Quests.currentOptions(p.log, def) do
 			local t = obj.target or ""
 			if obj.kind == "collect" then
 				ProgressionService.event(player, "inventory")
@@ -918,8 +947,8 @@ function ProgressionService.start()
 			end
 		end)
 	end)
-	ProgressBus.listen(function(player, kind, target, amount)
-		ProgressionService.event(player, kind, target, amount)
+	ProgressBus.listen(function(player, kind, target, amount, evidence)
+		ProgressionService.event(player, kind, target, amount, evidence)
 	end)
 	TimeService.onPhaseChanged(onDay)
 

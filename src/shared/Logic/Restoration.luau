@@ -13,6 +13,7 @@ export type Project = {
 	name: string,
 	site: string,
 	quest: string?, -- repairs open once this quest is active
+	scope: string?, -- "player" (default: each player's own story) or "town" (shared)
 	actions: { Action },
 	stages: { string }, -- one name per stage, #actions + 1 entries
 	benefit: string,
