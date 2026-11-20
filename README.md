@@ -45,7 +45,7 @@ For live editing, run `rojo serve` and connect the Rojo plugin in Studio
 | E, F, R | Interact (prompts show which) |
 | T | Pet Caramelo |
 | G | Dog commands |
-| I | Pack |
+| P | Pack |
 | J | Journal |
 | B | Build mode (R rotates, click places, X cancels) |
 | Mouse wheel | Zoom while looking out of a window |

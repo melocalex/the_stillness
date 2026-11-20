@@ -73,7 +73,7 @@ function Menu.start()
 		TextSize = 14,
 		FontFace = Theme.Font,
 		TextColor3 = C.Muted,
-		Text = "WASD move  ·  Shift run  ·  C crouch  ·  H hold breath  ·  Q coat\nE / F / R / V interact  ·  T pet dog  ·  G dog  ·  I pack  ·  J journal  ·  B build\nAt a window, E looks outside. Mouse wheel zooms.",
+		Text = "WASD move  ·  Shift run  ·  C crouch  ·  H hold breath  ·  Q coat\nE / F / R / V interact  ·  T pet dog  ·  G dog  ·  P pack  ·  J journal  ·  B build\nAt a window, E looks outside. Mouse wheel zooms.",
 	})
 
 	-- Wait for the server to finish building the world.

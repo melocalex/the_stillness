@@ -1,7 +1,7 @@
 --!strict
 -- Keyboard/gamepad intent. Sends requests; the server decides.
 -- Shift run (hold), C crouch (toggle), H hold breath (hold), Q coat,
--- G dog, I pack, J journal, B build. Also streams the camera direction
+-- G dog, P pack, J journal, B build. Also streams the camera direction
 -- (used server-side to know when a creature is being watched).
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -89,7 +89,8 @@ function InputController.start()
 	key("StillDog", { Enum.KeyCode.G, Enum.KeyCode.DPadUp }, function()
 		Panels.toggle("Dog")
 	end)
-	key("StillPack", { Enum.KeyCode.I, Enum.KeyCode.DPadLeft }, function()
+	-- P, not Tab (player list) or I (camera zoom), which Roblox already uses.
+	key("StillPack", { Enum.KeyCode.P, Enum.KeyCode.DPadLeft }, function()
 		Panels.toggle("Pack")
 	end)
 	key("StillJournal", { Enum.KeyCode.J, Enum.KeyCode.DPadRight }, function()
