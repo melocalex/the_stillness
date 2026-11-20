@@ -384,6 +384,15 @@ local function createDog(player: Player, character: Model)
 			if d then
 				d.happyUntil = now() + 3
 				PlayerService.markPetted(player)
+				-- Stop and turn to face the player for the petting.
+				local proot = PlayerService.root(player)
+				if proot then
+					d.humanoid:MoveTo(d.root.Position)
+					local look = Vector3.new(proot.Position.X, d.root.Position.Y, proot.Position.Z)
+					if (look - d.root.Position).Magnitude > 0.5 then
+						d.root.CFrame = CFrame.lookAt(d.root.Position, look)
+					end
+				end
 				d.model:SetAttribute("PettedAt", workspace:GetServerTimeNow())
 				Net.event("SoundCue"):FireAllClients("whine", d.root.Position, 0.3)
 				local lines = {

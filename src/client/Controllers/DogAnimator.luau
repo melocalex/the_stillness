@@ -62,6 +62,66 @@ local function heart(m: Model)
 	end)
 end
 
+-- The local player visibly pets their own dog: turns to face it, bends at the
+-- waist and strokes its back with the right hand (IKControl over the normal
+-- animations, so no animation upload is needed). Movement pauses meanwhile.
+local Players = game:GetService("Players")
+local petting = false
+
+local function petAnimation(m: Model)
+	local player = Players.LocalPlayer
+	if petting or m.Name ~= player.Name .. "_Dog" then
+		return
+	end
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local dogRoot = m.PrimaryPart
+	if not char or not hum or not root or not root:IsA("BasePart") or not dogRoot then
+		return
+	end
+	if (root.Position - dogRoot.Position).Magnitude > 10 then
+		return
+	end
+	local hand = char:FindFirstChild("RightHand")
+	local chainRoot = char:FindFirstChild("LowerTorso")
+	if not hand or not hand:IsA("BasePart") or not chainRoot or not chainRoot:IsA("BasePart") then
+		return -- R15 only
+	end
+	petting = true
+	local flat = Vector3.new(dogRoot.Position.X, root.Position.Y, dogRoot.Position.Z)
+	root.CFrame = CFrame.lookAt(root.Position, flat)
+	local target = Instance.new("Attachment")
+	target.Name = "PetTarget"
+	target.Parent = dogRoot
+	local ik = Instance.new("IKControl")
+	ik.Type = Enum.IKControlType.Position
+	ik.EndEffector = hand
+	ik.ChainRoot = chainRoot
+	ik.Target = target
+	ik.Weight = 0
+	ik.SmoothTime = 0.06
+	ik.Parent = hum
+	local walk = hum.WalkSpeed
+	hum.WalkSpeed = 0
+	task.spawn(function()
+		local duration = 2.4
+		local t = 0
+		while t < duration do
+			t += RunService.RenderStepped:Wait()
+			ik.Weight = math.clamp(math.min(t / 0.35, (duration - t) / 0.45), 0, 1)
+			-- Stroke along the back, from the neck toward the tail and back.
+			target.Position = Vector3.new(0, 0.7, -0.3 + math.sin(t * 5) * 0.55)
+		end
+		ik:Destroy()
+		target:Destroy()
+		if hum.WalkSpeed == 0 then
+			hum.WalkSpeed = walk
+		end
+		petting = false
+	end)
+end
+
 local function meshAnim(m: Model): MeshAnim?
 	if m:GetAttribute("MeshDog") ~= true then
 		return nil
@@ -115,6 +175,7 @@ local function meshAnim(m: Model): MeshAnim?
 	meshCache[m] = rec
 	m:GetAttributeChangedSignal("PettedAt"):Connect(function()
 		heart(m)
+		petAnimation(m)
 	end)
 	m.Destroying:Once(function()
 		meshCache[m] = nil
@@ -249,8 +310,12 @@ local function animate(m: Model, dt: number)
 		tail = CFrame.Angles(math.rad(-25), 0, 0)
 		wag = 0.02
 	elseif pose == "happy" then
+		-- Being petted: sit, head up toward the player, tail going.
 		wag = 1.1
-		neck = CFrame.Angles(math.rad(-8), math.sin(t * 3) * 0.15, 0)
+		body = CFrame.new(0, -0.3, 0.2) * CFrame.Angles(math.rad(18), 0, 0)
+		legs.LegBL = CFrame.Angles(math.rad(-65), 0, 0)
+		legs.LegBR = CFrame.Angles(math.rad(-65), 0, 0)
+		neck = CFrame.Angles(math.rad(-14), math.sin(t * 3) * 0.15, 0)
 	end
 	if speed > 0.8 then
 		body *= CFrame.new(0, math.abs(math.sin(j.phase)) * 0.08, 0)
