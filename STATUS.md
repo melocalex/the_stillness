@@ -35,19 +35,49 @@ in Studio.
 - 80/80 licensed audio ids load; 13 vetted models import with zero scripts;
   "The Mechanism" (85164647841567) loads.
 
+Seen in Studio on 2026-11-20 (builds head5 and head6):
+
+- The new menu, then waking in the cabin: the radio crackles, the objective
+  card reads "Answer the radio", the morning call plays on its own after
+  45 s and the objective moves to firewood. New HUD time pill, objective
+  card and vitals panel.
+- Imported creature models: Watcher (R15, about 11 studs), Dweller (deer
+  skull), Crawler (grey beast) and the Old One (74-stud black Watcher). The
+  Watcher and Dweller play Roblox's walk animation when moving.
+- The Watcher at night: a near-black silhouette with two pale eye points;
+  its head turns toward the camera. Under a direct gaze it held still for
+  about 30 s, then resumed. Its fear energy fell from 0.8 to 0.35 with
+  nobody afraid nearby (starving works).
+
 ## Automated tests
 
-- 64 Lune unit tests over the pure logic: TimeCycle, Perception,
+- 75 Lune unit tests over the pure logic: TimeCycle, Perception,
   CreatureBrain, Shelter, Noise, CollectiveMind, Inventory, NightClass
   (including the 65/25/9/1 night weights and the scripted first nights),
   Comfort, LightVisibility, MusicState (including storm night), Journal,
-  StoryProgress, Mystery, Breath, AudioConfig.
+  StoryProgress, Mystery, Breath, AudioConfig, FearEcology (fear bounds,
+  diminishing returns, starving, temperament limits) and RadioConfig (every
+  condition and story fact exists).
 - Every server service, client controller and world builder is type-checked
   in strict mode and built by Rojo, but **no service has a behavioural
   test**. That includes MayaService, OpeningService, ToolService, the HUD
   and the menu.
 
 ## Implemented, not Studio-verified
+
+Chapter 35, the unnatural creatures (ca7b018, 8287b7e):
+
+- The Watcher's dash after a long stare (sideways to a spot by a tree,
+  then stillness) and its displacement while nobody can see it (never into
+  a shelter, never within 20 studs of a player). Not yet seen in a test.
+- Slow stalking and long observation pauses facing the lit house; burst
+  gait (rush, dead stop) for the Crawler and Dweller; the Crawler's facing
+  fix and gait bob; the Dweller's red eye sockets and darker body.
+- Creature noises tied to behaviour (distant calls, close breathing, a tap
+  or scratch at a wall that repeats a few seconds later).
+- Temperaments and the fear ecology raising boldness (characters' fear from
+  fictional signals, creatures feeding within 90 studs).
+- The radio drawing every line from what is happening (569ea4e).
 
 Revision 2.0 (commits d248a33 and faf03a6, 2026-11-20):
 
@@ -68,8 +98,9 @@ Revision 2.0 (commits d248a33 and faf03a6, 2026-11-20):
   chips, toasts, radio transcript card, fading key hints.
 - Rebuilt menu with working music, ambience and cue volume sliders.
 - Axe tool (key 1, built-in slash animation), chips and shake per hit, the
-  last hit fells the tree away from the player, stump, regrowth. Uses a
-  procedural axe until the Creator Store axe is imported.
+  last hit fells the tree away from the player, stump, regrowth. Uses the
+  imported Creator Store axe (87307912628259); its look in hand is not yet
+  checked.
 - Visible petting: dog stops, faces the player and sits; the player bends
   and strokes it (IKControl).
 
@@ -108,7 +139,8 @@ Older systems:
 
 - **Every Studio check above** needs the Mac unlocked: computer use cannot
   drive Studio on a locked screen.
-- **Creator Store axe** (87307912628259, 0 scripts): import needs Studio.
+- **Pushing to GitHub** (`melocalex/the_stillness`): blocked for the
+  automated session; the owner pushes.
 - **Dog animations in a published game**: the account owner must publish
   the Dog KeyframeSequences as Animation assets.
 - **Publishing**: File > Publish to Roblox As, from the owner's account.
