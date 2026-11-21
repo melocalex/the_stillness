@@ -13,6 +13,7 @@ local WorldConfig = require(ReplicatedStorage.Shared.Config.WorldConfig)
 local Builder = require(script.Parent.Parent.World.Builder)
 local HouseActivityService = require(script.Parent.HouseActivityService)
 local PlayerService = require(script.Parent.PlayerService)
+local ProgressBus = require(script.Parent.ProgressBus)
 local StoryService = require(script.Parent.StoryService)
 local TimeService = require(script.Parent.TimeService)
 
@@ -26,6 +27,8 @@ local house: Model? = nil
 local npc: Model? = nil
 local watchOverYou: () -> ()
 local talking: { [Player]: boolean } = {}
+-- Progression talk (Chapter 37): returns lines it has handled, or nil for small talk.
+local talkHook: ((Player) -> { string }?)? = nil
 
 local LUNCH = {
 	"Maya: There you are. Sit, sit. It's still warm.",
@@ -175,9 +178,19 @@ local function onTalk(player: Player)
 		StoryService.setFact("talkedToMaya", true)
 		Net.event("Notify"):FireClient(player, "+1 Warm stew. Eat it from your pack (P).", "good")
 	else
-		say(player, { SMALL_TALK[math.random(1, #SMALL_TALK)] })
+		local lines = if talkHook then talkHook(player) else nil
+		if lines then
+			say(player, lines)
+		else
+			say(player, { SMALL_TALK[math.random(1, #SMALL_TALK)] })
+		end
 	end
 	PlayerService.markRoutine(player, "maya")
+	ProgressBus.emit(player, "met", "maya")
+end
+
+function MayaService.setTalkHook(fn: (Player) -> { string }?)
+	talkHook = fn
 end
 
 local function onPhase(snap: any)

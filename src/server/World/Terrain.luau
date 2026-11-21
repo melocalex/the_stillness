@@ -90,7 +90,9 @@ local function materialAt(x: number, z: number, h: number, slope: number): Enum.
 		elseif shore < -0.2 then
 			return Enum.Material.Mud
 		end
-		return Enum.Material.Pebble
+		-- Stony shore. (Pebble is a part material, not a terrain one: using it
+		-- here aborted the whole world build.)
+		return Enum.Material.Limestone
 	end
 	if not far then
 		local pd, width = field.pathDistance(x, z)
@@ -273,7 +275,7 @@ function Terrain.generate()
 	terrain:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(86, 72, 56))
 	terrain:SetMaterialColor(Enum.Material.Mud, Color3.fromRGB(58, 50, 42))
 	terrain:SetMaterialColor(Enum.Material.Sand, Color3.fromRGB(148, 136, 112))
-	terrain:SetMaterialColor(Enum.Material.Pebble, Color3.fromRGB(112, 108, 100))
+	terrain:SetMaterialColor(Enum.Material.Limestone, Color3.fromRGB(112, 108, 100))
 	terrain:SetMaterialColor(Enum.Material.Slate, Color3.fromRGB(86, 88, 88))
 	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(104, 104, 102))
 	terrain:SetMaterialColor(Enum.Material.Snow, Color3.fromRGB(232, 236, 240))

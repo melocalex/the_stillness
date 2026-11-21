@@ -490,7 +490,7 @@ function HUD.start()
 		radioSerial += 1
 		local serial = radioSerial
 		-- "Maya: Morning..." shows the speaker separately.
-		local who, said = string.match(text, "^([%w%s']+):%s*(.+)$")
+		local who, said = string.match(text, "^([%w%s'%.]+):%s*(.+)$")
 		radioWho.Text = "RADIO" .. (if who then "  ·  " .. string.upper(who) else "")
 		radioText.Text = if said then said else text
 		radio.Visible = true

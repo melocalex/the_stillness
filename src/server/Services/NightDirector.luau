@@ -36,6 +36,13 @@ function NightDirector.nightType(): string
 	return (ReplicatedStorage:GetAttribute("NightType") :: string?) or "Peaceful"
 end
 
+-- Tonight's night type, for the weather station's morning forecast. It only
+-- ever asks for today, so nights are still classified in day order and the
+-- seeded rolls do not change.
+function NightDirector.forecast(): string
+	return nightTypeFor(TimeService.snapshot().day)
+end
+
 local function after(seconds: number, fn: () -> ())
 	table.insert(scheduled, { at = TimeService.elapsed() + seconds, fn = fn })
 end

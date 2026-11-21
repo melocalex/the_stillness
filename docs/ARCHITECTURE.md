@@ -25,9 +25,14 @@ Config (pure data)  ->  Logic (pure functions, Lune-tested)
   `Noise`, `CollectiveMind`, `Inventory`, `NightClass`, `Comfort`,
   `LightVisibility`, `MusicState`, `Journal`, `StoryProgress`, `Mystery`,
   `Breath`, `FearEcology`, `ChaosField`, `Dissonance`, `Heightfield` (the
-  valley's deterministic height function, see [WORLD.md](WORLD.md)). No
-  requires, no Roblox services. `DissonanceConfig` holds the Chapter 36
-  tunables.
+  valley's deterministic height function, see [WORLD.md](WORLD.md)), and
+  for Chapter 37 `Objectives`, `Quests`, `Town`, `Restoration`,
+  `Incidents`, `Dialogue`, `LifeJournal`. No requires, no Roblox services
+  (`Quests` receives the objective components as an argument).
+  `DissonanceConfig` holds the Chapter 36 tunables.
+- Chapter 37 config: `QuestConfig` (quests) and `TownConfig` (sites, NPCs,
+  dialogue, projects, shop, tiers, limits, incidents, Caramelo's saved
+  Tracking skill).
 - `src/shared/Net.luau`: remote names, creation, per-player token-bucket
   rate limiting.
 
@@ -59,6 +64,13 @@ Started in dependency order by `Main.server.luau` after the world is built
 | `BuildService` | Grid placement validated on the server |
 | `ChaoticEnergyService`, `World/Chaoscope` | Chapter 36: the chaotic energy field (1 Hz, real time), anomalies, the H-17 Chaoscope on the cabin table and its validated `Chaoscope` remote |
 | `DissonanceEventDirector` | Answers anomaly beats with nonvisual events through LightService, MayaService, the dog's startle attributes and ObservationService.note |
+| `World/Town` | Chapter 37 sites from `TownConfig.Sites`, built by `Main` after the world and before services; dry ground by raycast, staged parts, clears trees in each site radius |
+| `ProgressBus` | Dependency-free progress events (`emit`/`listen`) so Maya, observation and others report without requiring progression |
+| `ProgressionService` | Per-player quests, standing, projects and Caramelo's Tracking skill; the `progression` save section; Life Journal view; forecast |
+| `TownService` | Frank, Ellen, Martha, Dr. Hale; dialogue; quest, repair and shop prompts; restoration visuals; Biscuit; Maya's talk hook |
+| `DogTracking` | Martha's scent trail: steers Caramelo through `DogService.setDriver` (the one Chapter 37 hook in DogService) and `dogOf` |
+| `IncidentService` | Daytime incident director from day 2 |
+| `DebugService` | Studio only: `ServerStorage.StillnessDebug` for command-bar checks |
 
 ## Client
 
@@ -67,6 +79,9 @@ Started in dependency order by `Main.server.luau` after the world is built
 ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
 `ObservationController`, `BuildController`, `DogAnimator`,
 `CreatureAnimator`, `ChaoscopeController`, then `Menu`.
+Chapter 37 adds `UI/LifeJournal` (the J panel, errand card, objective
+marker, shop counter; registered through `Panels.register`) and
+`Controllers/TownFx` (spins parts marked `Spinning`).
 
 ## Contracts between world builders and services
 
@@ -113,6 +128,26 @@ ProximityPrompt renderer), `HUD`, `Panels`, `InputController`,
 - Remotes: `Chaoscope` (client to server, rate 4/s, within 12 studs) and
   `Dissonance` (server to client; `echo` replays the client's own recent
   in-game cues).
+
+## Progression (Chapter 37)
+
+- Tags: `TownSite` (site models, `Site` attribute), `TownVisual` (staged or
+  lit parts), `TownNpc` (NPC models, `Npc` attribute), `TownForage`
+  (incident pickups). Biscuit is tagged `Dog` without an `Owner`, so only
+  `DogAnimator` treats him as a dog.
+- Part attributes (set by `World/Town`): `NpcSpot` (as `Npc`),
+  `Interaction`, `RepairProject`, `SiteAnchor`, `ShopVendor`, `MissingSpot`,
+  `HomeSpot`, `StageOf` + `ShowFrom` + `ShowUntil`, `ShowFlag`, `HideFlag`,
+  `LitFlag`, `NightOnly`, `LightWhenShown`, `Glow`, `NeonWhenLit`, `Spin` +
+  `SpinFrom` (server sets `Spinning`).
+- Prompt names: `TownTalkPrompt` (E, people), `TownPrompt`, `RepairPrompt`,
+  `InspectPrompt` (F, things), `ShopPrompt` (R, counters), `IncidentPrompt`.
+- Dog: while `DogTracking` steers him, the dog model has `Tracking = true`
+  and `Pose` may be `track` (nose down). DogService's only Chapter 37 change
+  is `setDriver(player, driver?)`; concealing, seeking the owner and hiding
+  always win over a driver.
+- Remotes: `LifeRequest` (client to server), `Life`, `Shop` (server to
+  client), `GetLife` (function).
 
 ## Performance choices
 

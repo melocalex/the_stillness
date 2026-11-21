@@ -16,6 +16,7 @@ local CreatureService = require(script.Parent.CreatureService)
 local HouseActivityService = require(script.Parent.HouseActivityService)
 local OldOneService = require(script.Parent.OldOneService)
 local PlayerService = require(script.Parent.PlayerService)
+local ProgressBus = require(script.Parent.ProgressBus)
 local ShelterService = require(script.Parent.ShelterService)
 local TimeService = require(script.Parent.TimeService)
 local WeatherService = require(script.Parent.WeatherService)
@@ -94,6 +95,7 @@ local function record(player: Player, id: string, subject: string, text: string)
 	if entry then
 		Net.event("Journal"):FireClient(player, entry)
 		Net.event("SoundCue"):FireClient(player, "journal")
+		ProgressBus.emit(player, "observe", subject, nil, id)
 	end
 end
 

@@ -17,6 +17,135 @@ Watcher investigation and finishes the night in comfort. **Not met yet**:
 the code for every beat exists, but the full day-1 run has not been played
 in Studio.
 
+## Chapter 37 progression (branch `feat/progression`, 2026-11-20)
+
+Since the playtests below, the branch was rebased onto `main` (terrain,
+Chaoscope, Chapter 38 dog AI), Caramelo's part was narrowed to Martha's
+trail (`DogTracking`; the old dog-panel Find it and practice buttons are
+gone), the weather station and Martha's cottage were made taller, and the
+quest framework gained campaign objectives, evidence, alternatives and a
+shared town. **None of that has been booted in Studio**; it passes the
+gate (150 + 18 tests).
+
+Studio-verified (two playtests of `feat/progression` builds db74813 and
+earlier, before the rebase, 2026-11-20). Items, teleports and time skips
+came from the Studio-only debug hook (`docs/TESTING.md`); every talk,
+repair, cook, scarf, table, shop and dog command went through the real
+prompts and panels:
+
+- Server starts with the new sites and services and logs no error from
+  them; world built in 6.3 to 8.7 s.
+- Pinehaven Hardware, Ellen's Diner, the weather station, the storm-wrecked
+  shed, the sensor mast, Martha's cottage and Maya's garden stand on the
+  ground; Frank, Ellen, Martha and Dr. Hale stand at their posts with Talk
+  (E), and the counters show Browse (R).
+- All five missions start and complete:
+  - Frank (played twice): collect, three repairs, talk. The shed visibly
+    changes from leaning walls and loose boards to straight walls, a red
+    roof, a door, a lantern and a toolbox. "+15 credits +10 reputation
+    +2 Scrap metal".
+  - Ellen: collect, cook at the stove (F), serve. "+10 credits +8
+    reputation". The burner and ceiling lamp light at once, and at dusk her
+    windows glow.
+  - Martha (old tracking code): Talk starts it; the final Talk pays "+10
+    credits +8 reputation". The steps in between completed as objectives
+    (scarf, Biscuit located, brought home), but Biscuit was never on
+    screen, and the scarf step completed without a deliberate F press (see
+    below). Tracking has since been rewritten as `DogTracking`.
+  - Maya: lunch, then the trellis quest. Two repairs turn the flattened
+    bed into a framed trellis with green vines and flowers. Showing her
+    pays "+3 reputation +2 Berries" plus her garden gift. Then she asks for
+    supper: the stew is delivered by talking, and sitting at her table (F)
+    completes "Supper at Maya's" with "This is nice. Just this." and a
+    comfort rise.
+  - Dr. Hale: needs Frank's mission first. Hike to the mast, inspect,
+    collect (the scrap was in the pack from Frank), cups then wiring (the
+    cups appear and spin, the beacon lights), report. "+15 credits +10
+    reputation".
+- Dialogue changes after missions: Ellen "Stove's warm. People keep coming
+  in just to smell it."; Frank "Shed's holding up fine. Best roof in
+  Pinehaven, don't tell anyone."
+- The radio card names "DR. HALE".
+- Ellen's counter lists stew, berries and a mushroom; buying a stew takes 10
+  credits down to 6 and the toast confirms it.
+- The old tracking started and waited for the player ("Caramelo waits for
+  you, ears up, then looks ahead").
+- Rejoin path: `StillnessDebug:Invoke("rejoin")` sent the live state (1,342
+  bytes) through JSON into a fresh state. The summary before and after was
+  identical: 46 credits, 45 reputation, six quests done, all three projects
+  restored, the same seven flags.
+- Day 2: the incident director posted "A fallen branch blocks a trail" in
+  the journal. On day 3 Dr. Hale radioed the morning forecast ("Tonight
+  feels restless. Curtains drawn, I'd say."), which is right for the
+  scripted uneasy night 3.
+- Life Journal: HOME (forecast, today's incident, Caramelo), TOWN (tier,
+  credits, restoration with benefits, "Because of you", finished missions
+  with what they opened), PEOPLE (Maya's three milestones done, trust per
+  neighbour), MYSTERIES (the two optional research quests, observations).
+
+Found in the playtests and fixed afterwards, not yet booted:
+
+- Dr. Hale looked taller than the weather station (an 8-stud hut with its
+  sign at head height in front of him). The station is now 10 studs to the
+  eaves, 9 under the porch, with the sign on top of the awning; Martha's
+  cottage got the same headroom.
+
+- In the old terrain, Martha's porch and the old wood shed stood in a
+  creek. Sites now search outward for a dry footprint.
+- The station's status lamp glowed before the forecast worked; it now
+  lights with the forecast.
+- A repair prompt accepted a press before the repair step and spent what
+  the collect step still needed. Repairs now wait for their step.
+- The errand card overlapped Roblox's chat window; it now sits lower on
+  the left.
+
+Unexplained, seen once: the scarf step completed right after Martha's
+quest started, without a deliberate F press. Not reproduced.
+
+Automated tests (`tests/progression.spec.luau`, called from
+`tests/logic.spec.luau`; 150 + 18 tests in all after the rebase):
+
+- Every objective component, phase limits, target matching, progress text.
+- Quest prerequisites, ordered objectives, consequences, follow-ups opening,
+  expiry, restore from bad data.
+- One-time payouts, capped small earnings across a rejoin, tiers, every shop
+  rule, clamped restore.
+- Restoration stages, finishing twice pays nothing, union of players.
+- Incident eligibility, cooldowns, daily budget, weighted choice; a peaceful
+  errand exists on a plain day.
+- Martha's reward raises Tracking by one, once.
+- Campaign framework: inspect, escort, track, communicate, activate,
+  coordinate and survive objectives; evidence counted once per quest, also
+  after a JSON save; evidence that moves nothing is not burned;
+  alternatives complete a step, record the choice and set its flag, with
+  partial progress surviving a save.
+- SharedTown: only moves forward, merges two servers' saves without loss,
+  readiness summary, JSON round trip, rejects bad data, town-scope projects
+  advance shared buildings.
+- Dialogue changes after a mission and with trust.
+- Config integrity: every NPC, item, site, interaction, project, creature
+  and weather named by a quest resolves; repair quests ask for exactly what
+  the repairs cost; monster research is never required.
+- All five missions played through the real logic with correct rewards;
+  a JSON save and restore gives an identical journal, keeps mid-quest steps
+  and refuses a second claim.
+
+Implemented, not Studio-verified:
+
+- A real DataStore rejoin. An unpublished local place has no DataStore, so
+  only the in-game snapshot, JSON and restore path above ran. The section
+  is written in the same `SetAsync` as the inventory.
+- `DogTracking`: the scarf starting the trail, paw prints and scent,
+  waiting, stuck recovery, hiding taking over, Biscuit found and following
+  home and asleep on the porch, her lantern.
+- `SharedTownService` saving and merging across servers (no DataStore in a
+  local place), and any town-scope project (none exists in the slice).
+- Maya's night radio line, the optional rain log and Watcher notes, and
+  clearing an incident (the branch was posted but not cleared).
+- Multiplayer: the world shows the furthest stage held by the players
+  present. Only one player was tested.
+- Walking the whole route on foot at normal speed. Teleports were used.
+
 ## Studio-verified
 
 - World generation on server start (6.7 s, 2 km map), terrain, lake, snowy
@@ -221,9 +350,10 @@ Older systems:
 
 ## Not implemented
 
-- Living neighborhood: named neighbors with routines.
+- Living neighborhood: neighbors with daily routines (Chapter 37 NPCs stand
+  at their posts; only Maya moves).
 - Food beyond one stew recipe; hunger; dog feeding.
-- Forecasting (barometer, weather radio, station).
+- Forecasting beyond Dr. Hale's morning radio line (barometer, weather radio).
 - Bad Night verification pass and blackout behaviour.
 - Observer profession (Human Watchers), optional path.
 - Maya visiting or staying over; the Maya rescue system (Chapter 32).

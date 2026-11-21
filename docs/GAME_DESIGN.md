@@ -256,6 +256,122 @@ breaches, calls creatures or blocks the story, and it stays silent on day 1.
 **Journal.** Readings of DISTURBANCE or higher and each family's first
 sighting of the day become observed entries.
 
+## Long-term progression (Chapter 37, branch feat/progression)
+
+**Goal.** After thirty minutes a new player has done something meaningful
+and has two reasons to come back. Pinehaven visibly changes because of the
+player. No grind, no login rewards, no daily chores that punish absence.
+
+**Quests are data.** `QuestConfig` lists each quest: id, issuing NPC,
+context, prerequisites (finished quests, flags, reputation, trust),
+objectives, rewards, an optional real-time expiry, persistent world
+consequences (flags) and follow-ups. `Logic/Quests` runs them; objectives
+run in order. They live beside the day-1 story (`StoryConfig`), which is
+unchanged and keeps its own facts.
+
+**Objectives are shared components** (`Logic/Objectives`): collect items
+(checked against the pack), deliver items to an NPC, repair a structure,
+reach a location, speak to an NPC, complete an interaction, observe a
+creature, endure weather while sheltered, investigate a site, locate a
+missing NPC or animal. The server validates every one: positions, prompts
+and inventory are checked there, never trusted from the client.
+
+For the Protector (Chapter 39) and Observer (Chapter 40) campaigns the same
+framework also has inspect, escort, track, communicate, activate,
+coordinate and survive objectives. An event may carry an evidence id (an
+observation passes its journal entry id), and each id counts once per
+quest, even after a rejoin, so the same sighting never pays twice. A step
+may list alternatives (`anyOf`): any one completes it, for example repair
+the truck or lead the residents to the shelter, and the chosen
+alternative's flag records which. None of the slice's missions needs these
+yet; specs cover them.
+
+**Pinehaven standing** (`Logic/Town`): reputation with five tiers
+(Stranger, Newcomer, Neighbour, Friend of Pinehaven, One of Pinehaven),
+Pinehaven Credits, and trust 0-10 per NPC. A quest or a finished project
+pays once, ever, through a keyed ledger. Small repeatable earnings
+(incidents) and shop stock are capped per real-time window (one game day,
+1,500 s), so leaving and rejoining resets nothing.
+
+**Shops.** Frank sells scrap and fiber, and binoculars once you are a
+Neighbour and his shed is fixed. Ellen sells stew and ingredients once her
+diner is open. Counters open on R.
+
+**Restoration projects** (`Logic/Restoration`): ordered actions, each with
+a resource cost; the number done is the building's visual stage. Frank's
+tool shed goes from storm-wrecked (leaning walls, boards in the grass) to
+walls, roof, then door, lantern and toolbox. Maya's trellis goes from
+flattened to framed to climbing beans with flowers. The sensor mast gets
+cups, then wiring, a beacon, and spinning cups. Each project names a
+gameplay benefit and an NPC who acknowledges it.
+
+**People.** Frank (hardware), Ellen (diner), Martha (neighbour up the lane)
+and Dr. Hale (weather station) are R15 NPCs built like Maya, with a Talk
+prompt and lines on the radio card. What they say depends on quest status,
+flags and trust (`Logic/Dialogue`), so it changes after each mission.
+
+**The five missions of the slice.**
+
+| Mission | Objectives | What changes |
+| --- | --- | --- |
+| Frank's tool shed | collect 8 wood, repair the shed (3 actions), talk | Shed restored, counter restocks, 2 scrap, opens Dr. Hale's mission |
+| A warm plate at the diner | collect 2 berries and a mushroom, cook at Ellen's stove (the stew recipe), talk | Diner open: sign and windows lit, shop, a basket incident |
+| Biscuit is missing | let Caramelo smell the scarf (he follows the trail), find Biscuit near the old wood shed, bring him home, talk | Caramelo's Tracking +1; Biscuit sleeps on Martha's porch, her lantern lit |
+| Maya's trellis, then supper | collect 4 wood and 2 fiber, rebuild the trellis (2 actions), show her; then bring a stew and sit at her table before night | Garden blooms, berries from her garden once a day, shared-meal milestone, a comfort boost, a night radio line |
+| The silent anemometer | hike to the mast, inspect it, collect 2 scrap and 1 fiber, repair (2 actions), report | Morning forecast on the radio: tonight's night type and the weather |
+
+Follow-ups opened by Dr. Hale are optional: a rain log (sit sheltered
+through a minute of rain) and notes on the tall ones (observe a Watcher
+from a window). Monster research is never required by any main mission;
+a config test enforces it.
+
+**Maya** keeps her own routine and house. Progress with her is a set of
+milestones (lunch, garden, supper) shown in the PEOPLE tab. She thanks the
+player in person and sometimes on the radio at night. There are no forced
+rescues.
+
+**Caramelo.** Chapter 38 (DogService, DogMind on `main`) owns the dog's
+behaviour, emotions, barking, hiding and training. Chapter 37 adds only the
+tracking interaction for Martha's mission: when he smells Biscuit's scarf
+(F, with him close), `DogTracking` leads him toward Biscuit nose-down,
+leaving paw prints and a faint scent trail. He waits when he gets ahead,
+comes back when stuck, and gives up gently after a while; smelling the
+scarf again restarts the trail. Hiding with the owner always wins. The
+mission's reward raises his saved Tracking skill by one. Nothing punishes
+ignoring him.
+
+**Incident director** (`Logic/Incidents`): from day 2, at the start of the
+day and again at midday, one eligible incident is chosen by weight with
+cooldowns and a daily budget: a fallen branch on a trail, mushrooms after
+rain, Ellen's lost basket (once the diner is open), deer in the east
+meadow, and, after an uneasy or worse night, optional strange tracks by
+the lake. Peaceful days always have something to do.
+
+**Life Journal (J)** with four tabs: HOME (forecast, today's incident,
+errands, what you could do next, Caramelo), TOWN (standing, credits,
+restoration, what changed because of you, finished missions), PEOPLE (Maya's
+milestones, trust and a status line per neighbour) and MYSTERIES (optional
+research and the observation journal). An errand card in the top left and a
+marker point at the current objective, or at someone who could use help.
+
+**Persistence.** Progress is the `progression` section of the same save as
+the inventory, written in the same DataStore call. A save that fails to
+load is never written over. The world shows the furthest restoration stage
+and every flag held by the players present, applied on load, so a rejoin
+shows the same town. Positions of the new sites are in `TownConfig.Sites`
+and follow the terrain by raycast (moving off water), so the valley layout
+can move them.
+
+**Per player and shared town.** Each player's quests, standing, personal
+projects and Caramelo's Tracking skill live in that player's save. The
+slice's three repairs are personal: every player fixes Frank's shed in
+their own story. What belongs to the whole town (community buildings,
+opened routes, town flags) lives in `SharedTown`, a separate DataStore key
+for every server. It only moves forward and merges with what is stored
+(UpdateAsync), so two servers never erase each other. A restoration project
+marked `scope = "town"` reads and advances the shared town instead of a
+player's save. Readiness is only a summary of those real pieces.
+
 ## Design chapters
 
 The full brief is split into chapters (vision, environment, world,

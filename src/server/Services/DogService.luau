@@ -74,6 +74,9 @@ type Dog = {
 local D = GameConfig.Dog
 local dogs: { [Player]: Dog } = {}
 local folder: Folder
+-- Another module can steer the dog for a while (DogTracking). Hiding wins.
+export type Driver = (dog: Model, humanoid: Humanoid, root: BasePart) -> ()
+local drivers: { [Player]: Driver } = {}
 
 local COMMANDS: { [string]: boolean } = {
 	follow = true,
@@ -477,7 +480,10 @@ local function tickDog(d: Dog, dt: number)
 	end
 
 	local mode = if d.concealed then "conceal" else (d.auto or d.state)
-	if mode == "conceal" then
+	local driver = drivers[owner]
+	if driver and mode ~= "conceal" and mode ~= "seek" and mode ~= "hide" then
+		driver(d.model, d.humanoid, d.root)
+	elseif mode == "conceal" then
 		-- Tucked against your front, under the coat's hem.
 		local look = flat(ownerRoot.CFrame.LookVector)
 		local spot = ownerPos + look * 1.4 - Vector3.new(0, 2, 0)
@@ -721,6 +727,16 @@ local function createDog(player: Player, character: Model)
 		petPrompt = if petPart then petPart:FindFirstChild("PetPrompt") :: ProximityPrompt? else nil,
 		hidePrompt = hidePrompt,
 	}
+end
+
+-- Hands the dog's movement to `driver` each tick (nil gives it back).
+-- Hiding, concealing and seeking the owner always take precedence.
+function DogService.setDriver(player: Player, driver: Driver?)
+	if driver then
+		drivers[player] = driver
+	else
+		drivers[player] = nil
+	end
 end
 
 function DogService.dogOf(player: Player): Model?
